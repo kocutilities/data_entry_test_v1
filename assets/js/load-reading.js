@@ -1016,11 +1016,20 @@
         }
 
         $('endpointSave').addEventListener('click', function () {
-            var v = $('endpointInput').value.trim();
-            if (!/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(v)) {
-                setStatus('err', 'That does not look like a web app URL. It should read ' +
-                                 'https://script.google.com/macros/s/\u2026/exec');
+            var v = $('endpointInput').value.trim().replace(/\/+$/, '');
+
+            if (!v) {
+                setStatus('err', 'Paste the web app URL first, then press Connect.');
                 $('endpointInput').focus();
+                return;
+            }
+            /* accept the /macros/u/0/s/... form some accounts produce, and a
+               trailing query string */
+            if (!/^https:\/\/script\.google\.com\/macros\/(?:u\/\d+\/)?s\/[\w-]+\/exec(?:\?.*)?$/.test(v)) {
+                setStatus('err', 'That does not look like a web app URL. It should end in /exec ' +
+                                 'and start https://script.google.com/macros/s/');
+                $('endpointInput').focus();
+                $('endpointInput').select();
                 return;
             }
             setEndpoint(v);
