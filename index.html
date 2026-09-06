@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KOC Data Center — Electrical Records</title>
+<link rel="stylesheet" href="assets/css/theme.css">
+<style>
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+
+    .card {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        padding: 20px 22px;
+        transition: border-color .15s, transform .12s;
+    }
+
+    a.card:hover { border-color: rgba(76,125,255,.42); transform: translateY(-2px); }
+
+    .card.pending { opacity: .58; }
+
+    .card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .card-top svg.i { width: 20px; height: 20px; flex: 0 0 20px; stroke: var(--accent); }
+    .card h3 { margin: 0; font-size: 15.5px; font-weight: 620; }
+    .card p { margin: 0; font-size: 13.2px; color: var(--text-dim); line-height: 1.5; }
+    .card .tag { margin-left: auto; }
+</style>
+</head>
+<body>
+
+<div class="app">
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-badge">DC</div>
+            <div>
+                <div class="brand-name">KOC Data Center</div>
+                <div class="brand-sub">Electrical records</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">Readings</div>
+            <nav class="nav">
+                <a href="load-reading.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+                    Load Reading
+                </a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Analysis</div>
+            <nav class="nav">
+                <a class="soon">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 5-7"/></svg>
+                    Power System Assessment
+                    <span class="tag">Soon</span>
+                </a>
+                <a class="soon">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    Additional Load Study
+                    <span class="tag">Soon</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                <b>Independent project</b><br>
+                Self-contained. Shares no code or data with the
+                Substation web page.
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="wrap">
+            <div class="topbar">
+                <div>
+                    <h1 class="page-title">KOC Data Center</h1>
+                    <p class="page-sub">
+                        Electrical records for Data Center No. 1 — load readings now, system
+                        assessment and additional-load studies to follow.
+                    </p>
+                </div>
+                <div class="topbar-actions">
+                    <button id="themeBtn" class="icon-btn" type="button" aria-label="Switch theme">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="cards">
+                <a class="card" href="load-reading.html">
+                    <div class="card-top">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+                        <h3>Load Reading</h3>
+                    </div>
+                    <p>
+                        R, Y and B phase currents for 26 incomers and boards, plus every
+                        outgoing breaker on PDU&nbsp;1 to PDU&nbsp;8. Saves to a Google Sheet.
+                    </p>
+                </a>
+
+                <div class="card pending">
+                    <div class="card-top">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 5-7"/></svg>
+                        <h3>Power System Assessment</h3>
+                        <span class="tag">Soon</span>
+                    </div>
+                    <p>
+                        Loading against rated capacity, phase unbalance and N-1 contingency,
+                        drawn from the recorded readings.
+                    </p>
+                </div>
+
+                <div class="card pending">
+                    <div class="card-top">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                        <h3>Additional Load Study</h3>
+                        <span class="tag">Soon</span>
+                    </div>
+                    <p>
+                        Effect of a proposed new load on the incomers, generators and the
+                        affected distribution board.
+                    </p>
+                </div>
+            </div>
+
+            <p class="footnote">
+                Equipment list taken from the Computer Centre single line diagram, issue
+                06-09-26. PDU way numbers and rack names from the data centre load schedule.
+            </p>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    var KEY = 'koc-dc-theme';
+    var btn = document.getElementById('themeBtn');
+    function apply(t) {
+        document.documentElement.setAttribute('data-theme', t);
+        try { localStorage.setItem(KEY, t); } catch (e) { /* ignore */ }
+    }
+    var saved;
+    try { saved = localStorage.getItem(KEY); } catch (e) { saved = null; }
+    apply(saved || 'dark');
+    btn.addEventListener('click', function () {
+        apply(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    });
+})();
+</script>
+</body>
+</html>

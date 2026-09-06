@@ -1,0 +1,860 @@
+/* =============================================================
+   KOC Data Center - shared theme
+   Design tokens follow the existing KOC pages so the two sit
+   together visually, but this project is self-contained: nothing
+   here is loaded from the Substation web app.
+   ============================================================= */
+
+:root {
+    color-scheme: dark;
+    --bg:            #070b16;
+    --bg-elev:       #0d1424;
+    --surface:       #101829;
+    --surface-2:     #162034;
+    --surface-3:     #1c2842;
+    --border:        rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text:          #e9eefb;
+    --text-dim:      #93a1bf;
+    --text-faint:    #63719a;
+    --accent:        #4c7dff;
+    --accent-2:      #8b5cf6;
+    --accent-soft:   rgba(76,125,255,.14);
+    --good:          #34d399;   --good-soft: rgba(52,211,153,.14);
+    --warn:          #fbbf24;   --warn-soft: rgba(251,191,36,.14);
+    --bad:           #f87171;   --bad-soft:  rgba(248,113,113,.14);
+    --feed-a:        #4c7dff;
+    --feed-b:        #8b5cf6;
+    --shadow:        0 18px 40px -18px rgba(0,0,0,.85);
+    --radius:        18px;
+    --sidebar-w:     252px;
+}
+
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg:            #f4f6fc;
+    --bg-elev:       #ffffff;
+    --surface:       #ffffff;
+    --surface-2:     #f7f9ff;
+    --surface-3:     #eef2fd;
+    --border:        rgba(16,24,41,.10);
+    --border-strong: rgba(16,24,41,.18);
+    --text:          #101829;
+    --text-dim:      #4c5980;
+    --text-faint:    #7b87a8;
+    --accent-soft:   rgba(76,125,255,.12);
+    --good-soft:     rgba(16,150,105,.13);
+    --warn-soft:     rgba(190,130,10,.14);
+    --bad-soft:      rgba(200,50,50,.12);
+    --shadow:        0 18px 40px -22px rgba(16,24,41,.30);
+}
+
+* { box-sizing: border-box; }
+
+/* Author display rules below (buttons, banners, flex rows) override the
+   browser's own [hidden] rule, so restate it with priority. Without this,
+   el.hidden = true silently does nothing. */
+[hidden] { display: none !important; }
+
+html, body { height: 100%; }
+
+html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: contain;
+}
+
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+        radial-gradient(900px 500px at 12% -8%,  rgba(76,125,255,.16), transparent 60%),
+        radial-gradient(760px 460px at 92% 4%,   rgba(139,92,246,.13), transparent 62%);
+}
+
+/* ---------- shell ---------- */
+
+.app { position: relative; z-index: 1; display: flex; min-height: 100vh; }
+
+.sidebar {
+    width: var(--sidebar-w);
+    flex: 0 0 var(--sidebar-w);
+    background: var(--bg-elev);
+    border-right: 1px solid var(--border);
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+}
+
+.brand { display: flex; align-items: center; gap: 11px; }
+
+.brand-badge {
+    width: 38px; height: 38px;
+    flex: 0 0 38px;
+    border-radius: 11px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #fff; font-weight: 700; font-size: 13px;
+    letter-spacing: .5px;
+    box-shadow: 0 8px 18px -8px rgba(76,125,255,.9);
+}
+
+.brand-name { font-weight: 650; font-size: 14.5px; line-height: 1.2; }
+.brand-sub  { font-size: 11.5px; color: var(--text-faint); }
+
+.nav-label {
+    font-size: 10.5px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 0 0 8px 6px;
+}
+
+.nav { display: flex; flex-direction: column; gap: 3px; }
+
+.nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 11px;
+    border-radius: 11px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13.6px;
+    border: 1px solid transparent;
+    transition: background .15s, color .15s, border-color .15s;
+}
+
+.nav a:hover { background: var(--surface-2); color: var(--text); }
+
+.nav a.active {
+    background: var(--accent-soft);
+    color: var(--text);
+    border-color: rgba(76,125,255,.30);
+    font-weight: 560;
+}
+
+.nav a.soon { opacity: .48; cursor: default; }
+.nav a.soon:hover { background: transparent; color: var(--text-dim); }
+
+.nav .tag {
+    margin-left: auto;
+    font-size: 9.5px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 1px 6px;
+}
+
+svg.i {
+    width: 17px; height: 17px; flex: 0 0 17px;
+    stroke: currentColor; fill: none;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+}
+
+.side-foot { margin-top: auto; }
+
+.side-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    padding: 11px 12px;
+    font-size: 11.6px;
+    color: var(--text-faint);
+    line-height: 1.5;
+}
+
+.side-card b { color: var(--text-dim); font-weight: 600; }
+
+/* ---------- main ---------- */
+
+.main { flex: 1; min-width: 0; }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 26px 30px 80px; }
+
+.topbar {
+    display: flex; align-items: flex-start; gap: 18px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+}
+
+.page-title { margin: 0; font-size: 25px; font-weight: 660; letter-spacing: -.01em; }
+.page-sub   { margin: 5px 0 0; color: var(--text-dim); font-size: 13.6px; max-width: 62ch; }
+
+.topbar-actions { margin-left: auto; display: flex; gap: 9px; align-items: center; }
+
+/* ---------- controls ---------- */
+
+button, .btn {
+    font: inherit;
+    cursor: pointer;
+    border-radius: 11px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text);
+    padding: 9px 15px;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: background .15s, border-color .15s, transform .08s, opacity .15s;
+}
+
+button:hover, .btn:hover { background: var(--surface-3); }
+button:active, .btn:active { transform: translateY(1px); }
+button:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    border-color: transparent;
+    color: #fff;
+    font-weight: 580;
+    box-shadow: 0 10px 24px -12px rgba(76,125,255,.95);
+}
+
+.btn-primary:hover { background: linear-gradient(135deg, #5b88ff, #9668f7); }
+
+.icon-btn { padding: 9px; border-radius: 10px; }
+
+.btn-sm { padding: 6px 11px; font-size: 12.6px; border-radius: 9px; }
+
+input, select, textarea {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border-strong);
+    border-radius: 10px;
+    padding: 8px 11px;
+    width: 100%;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+    background: var(--surface);
+}
+
+input::placeholder { color: var(--text-faint); }
+
+input[type="number"] { -moz-appearance: textfield; }
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 5px; }
+
+/* ---------- section ---------- */
+
+.section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+    margin-bottom: 20px;
+}
+
+.section-head {
+    display: flex; align-items: center; gap: 11px;
+    margin: 0 0 16px;
+    flex-wrap: wrap;
+}
+
+.section-head h2 { margin: 0; font-size: 15.5px; font-weight: 620; letter-spacing: .005em; }
+.section-head .hint { font-size: 12.4px; color: var(--text-faint); }
+.section-head .spacer { margin-left: auto; }
+
+.grid { display: grid; gap: 14px; }
+.grid-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+/* ---------- reading rows ---------- */
+
+.rowset { display: flex; flex-direction: column; gap: 7px; }
+
+.rowhead, .row {
+    display: grid;
+    grid-template-columns: minmax(168px, 1.2fr) 82px 82px 82px 116px 190px;
+    gap: 10px;
+    align-items: center;
+}
+
+.rowhead {
+    padding: 0 12px 6px;
+    font-size: 10.6px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    position: sticky;
+    top: 0;
+    background: var(--surface);
+    z-index: 2;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+}
+
+.rowhead .num { text-align: center; }
+.row .cell-r, .row .cell-y, .row .cell-b { text-align: center; }
+
+.row {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 8px 12px;
+    transition: border-color .15s, background .15s;
+}
+
+.row:focus-within { border-color: rgba(76,125,255,.42); background: var(--surface-3); }
+
+.row.filled { border-color: rgba(52,211,153,.22); }
+
+.row-name { font-size: 13.4px; font-weight: 540; line-height: 1.25; }
+.row-meta { font-size: 11px; color: var(--text-faint); margin-top: 1px; }
+
+.row input { text-align: center; padding: 7px 6px; }
+
+/* phase tinting so R / Y / B are unmistakable in the field */
+.row input.p-r { border-bottom: 2px solid rgba(248,113,113,.55); }
+.row input.p-y { border-bottom: 2px solid rgba(251,191,36,.55); }
+.row input.p-b { border-bottom: 2px solid rgba(76,125,255,.55); }
+
+.rowhead .h-r { color: var(--bad); }
+.rowhead .h-y { color: var(--warn); }
+.rowhead .h-b { color: var(--accent); }
+
+/* a way marked SPARE on the panel - shown so it can still be recorded if
+   something is connected later, but faded so a reading round skips it */
+.row.is-spare { opacity: .42; }
+.row.is-spare:hover, .row.is-spare:focus-within { opacity: 1; }
+
+/* ---------- phase wiring ---------- */
+
+.phase-tag {
+    font-size: 10.4px;
+    letter-spacing: .04em;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-3);
+    color: var(--text-faint);
+    white-space: nowrap;
+}
+
+.phase-tag.phase-3 { color: var(--text-dim); }
+.phase-tag.phase-R { color: var(--bad);    border-color: rgba(248,113,113,.28); }
+.phase-tag.phase-Y { color: var(--warn);   border-color: rgba(251,191,36,.28); }
+.phase-tag.phase-B { color: var(--accent); border-color: rgba(76,125,255,.28); }
+
+
+.row-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.cell-r.phase-off, .cell-y.phase-off, .cell-b.phase-off {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.phase-off input { display: none; }
+
+.phase-off::after {
+    content: "\2014";
+    color: var(--text-faint);
+    opacity: .4;
+    font-size: 13px;
+}
+
+/* ---------- derived readout ---------- */
+
+.calc {
+    display: flex; gap: 6px; align-items: center; justify-content: flex-end;
+    font-size: 11.4px;
+}
+
+.pill {
+    border-radius: 999px;
+    padding: 2px 8px;
+    border: 1px solid var(--border);
+    background: var(--surface-3);
+    color: var(--text-faint);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.pill.ok   { background: var(--good-soft); border-color: rgba(52,211,153,.3);  color: var(--good); }
+.pill.warn { background: var(--warn-soft); border-color: rgba(251,191,36,.3);  color: var(--warn); }
+.pill.bad  { background: var(--bad-soft);  border-color: rgba(248,113,113,.3); color: var(--bad); }
+
+/* ---------- PDU panels ---------- */
+
+.pdu {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface-2);
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+
+.pdu-head {
+    display: flex; align-items: center; gap: 11px;
+    padding: 10px 15px;
+}
+
+.pdu-toggle {
+    display: flex; align-items: center; gap: 11px;
+    flex: 1;
+    min-width: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 9px;
+    padding: 6px 8px;
+    margin: 0 -8px;
+    text-align: left;
+    user-select: none;
+}
+
+.pdu-toggle:hover { background: var(--surface-3); }
+
+.pdu-submit { flex: 0 0 auto; white-space: nowrap; }
+
+.pdu-name { font-weight: 600; font-size: 14px; }
+
+.feed-dot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 9px; }
+.feed-A .feed-dot { background: var(--feed-a); box-shadow: 0 0 0 3px rgba(76,125,255,.18); }
+.feed-B .feed-dot { background: var(--feed-b); box-shadow: 0 0 0 3px rgba(139,92,246,.18); }
+
+.pdu-meta { font-size: 11.6px; color: var(--text-faint); white-space: nowrap; }
+.pdu-progress { flex: 0 0 auto; }
+
+.chev { transition: transform .18s; transform-origin: center; transform-box: fill-box; }
+.pdu.open .chev { transform: rotate(90deg); }
+
+.pdu-body { display: none; padding: 4px 15px 15px; }
+.pdu.open .pdu-body { display: block; }
+
+.pdu-body .rowhead, .pdu-body .row {
+    grid-template-columns: minmax(138px, 1fr) 76px 76px 76px 108px 182px;
+}
+
+.pdu-body .rowhead { background: var(--surface-2); }
+
+.endpoint-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.endpoint-row input {
+    flex: 1 1 260px;
+    min-width: 0;
+    font-size: 12.5px;
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+
+.endpoint-row button { flex: 0 0 auto; }
+
+#connState { display: block; margin-bottom: 6px; word-break: break-all; }
+#connChange { margin-top: 2px; }
+
+/* ---------- status ---------- */
+
+.status {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    transform: translateX(-50%);
+    z-index: 60;
+    display: flex; align-items: center; gap: 9px;
+    font-size: 13.2px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--border-strong);
+    background: var(--surface-2);
+    color: var(--text-dim);
+    max-width: min(560px, calc(100vw - 32px));
+    box-shadow: 0 20px 44px -16px rgba(0,0,0,.75);
+    animation: toast-in .18s ease-out;
+}
+
+html[data-theme="light"] .status { box-shadow: 0 20px 44px -20px rgba(16,24,41,.45); }
+
+@keyframes toast-in {
+    from { opacity: 0; transform: translate(-50%, 10px); }
+    to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.status.ok   { background: #0f2a22; border-color: rgba(52,211,153,.45);  color: var(--good); }
+.status.err  { background: #2a1418; border-color: rgba(248,113,113,.45); color: #ffb3b3; }
+.status.busy { background: var(--surface-3); border-color: rgba(76,125,255,.45); color: var(--text); }
+
+html[data-theme="light"] .status.ok  { background: #e8f8f1; color: #0b7a55; }
+html[data-theme="light"] .status.err { background: #fdecec; color: #a32020; }
+
+.status-close {
+    margin-left: 4px;
+    padding: 2px 6px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    opacity: .65;
+    font-size: 15px;
+    line-height: 1;
+    border-radius: 6px;
+}
+
+.status-close:hover { background: rgba(255,255,255,.12); opacity: 1; }
+.status:empty { display: none; }
+
+.spinner {
+    width: 14px; height: 14px; flex: 0 0 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.25);
+    border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* a required field that blocked a submit */
+.flash {
+    animation: flash-field 1.5s ease-out;
+}
+
+@keyframes flash-field {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(248,113,113,0); border-color: var(--border-strong); }
+    15%, 65% { box-shadow: 0 0 0 3px rgba(248,113,113,.28); border-color: var(--bad); }
+}
+
+/* ---------- summary strip ---------- */
+
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+
+.stat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 13px 15px;
+}
+
+.stat-k { font-size: 10.6px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-faint); }
+.stat-v { font-size: 22px; font-weight: 640; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.stat-s { font-size: 11.4px; color: var(--text-faint); }
+
+/* ---------- misc ---------- */
+
+.banner {
+    display: flex; gap: 11px; align-items: flex-start;
+    border-radius: 13px;
+    padding: 12px 15px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    background: var(--warn-soft);
+    border: 1px solid rgba(251,191,36,.30);
+    color: var(--text);
+}
+
+.banner svg.i { stroke: var(--warn); margin-top: 2px; }
+.banner code { background: rgba(0,0,0,.28); padding: 1px 5px; border-radius: 5px; font-size: 12px; }
+
+html[data-theme="light"] .banner code { background: rgba(16,24,41,.08); }
+
+.footnote { font-size: 11.8px; color: var(--text-faint); margin-top: 12px; line-height: 1.55; }
+
+.sticky-bar {
+    position: sticky;
+    bottom: 0;
+    background: linear-gradient(to top, var(--bg) 72%, transparent);
+    padding: 16px 0 10px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    z-index: 5;
+}
+
+.sticky-bar .spacer { margin-left: auto; }
+
+/* ---------- per-row action and recorded state ---------- */
+
+.cell-a {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.row-submit { width: 100%; justify-content: center; }
+
+.btn-xs {
+    padding: 3px 8px;
+    font-size: 11.4px;
+    border-radius: 8px;
+    background: transparent;
+    border-color: var(--border);
+    color: var(--text-faint);
+}
+
+.btn-xs:hover { background: var(--surface-3); color: var(--text); }
+
+.rowstate {
+    font-size: 11.6px;
+    font-weight: 560;
+    white-space: nowrap;
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 999px;
+    padding: 3px 10px;
+    border: 1px solid var(--border);
+    background: var(--surface-3);
+    color: var(--text-faint);
+}
+
+.rowstate.ok  { background: var(--good-soft); border-color: rgba(52,211,153,.35); color: var(--good); }
+.rowstate.dup { background: var(--warn-soft); border-color: rgba(251,191,36,.35); color: var(--warn); }
+.rowstate.err { background: var(--bad-soft);  border-color: rgba(248,113,113,.35); color: var(--bad); }
+
+/* a recorded row is settled - quieten it so the outstanding ones stand out */
+.row.locked {
+    background: transparent;
+    border-color: var(--border);
+}
+
+.row.locked .row-name { color: var(--text-dim); font-weight: 500; }
+
+.row.locked input {
+    background: transparent;
+    border-color: transparent;
+    border-bottom-color: var(--border);
+    color: var(--text-dim);
+    cursor: default;
+}
+
+.row.locked input:focus { box-shadow: none; border-color: transparent; }
+
+.row.sending { opacity: .65; }
+.row.row-error { border-color: rgba(248,113,113,.42); }
+
+.field-note {
+    font-size: 11.4px;
+    color: var(--text-faint);
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 17px;
+}
+
+.field-note .spinner { width: 11px; height: 11px; flex: 0 0 11px; border-width: 1.6px; }
+
+/* ---------- responsive ---------- */
+
+@media (max-width: 1000px) {
+    .strip { grid-template-columns: repeat(2, 1fr); }
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* The six-column row has hard minimum widths. Below roughly 1120px the
+   sidebar plus those minimums no longer fit, so the row stacks well before
+   the sidebar does. */
+@media (max-width: 1120px) {
+    .rowhead { display: none; }
+    .row, .pdu-body .row {
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-areas: "n n n" "r y b" "c c a";
+        gap: 8px 10px;
+    }
+    .row .cell-n { grid-area: n; }
+    .row .cell-r { grid-area: r; }
+    .row .cell-y { grid-area: y; }
+    .row .cell-b { grid-area: b; }
+    .row .cell-c { grid-area: c; }
+    .row .cell-a { grid-area: a; }
+    .calc { justify-content: flex-start; }
+    .cell-a { justify-content: flex-end; }
+    .row-submit { width: auto; min-width: 110px; }
+}
+
+/* Narrower still: the status needs a line of its own. */
+@media (max-width: 960px) {
+    .row, .pdu-body .row {
+        grid-template-areas: "n n n" "r y b" "c c c" "a a a";
+    }
+    .cell-a { justify-content: flex-start; }
+    .row-submit { width: 100%; }
+}
+
+@media (max-width: 860px) {
+    .app { flex-direction: column; }
+    .sidebar {
+        width: 100%; flex: none; height: auto; position: static;
+        flex-direction: row; align-items: center; gap: 14px;
+        overflow-x: auto; padding: 12px 14px;
+        padding-top: max(12px, env(safe-area-inset-top));
+        -webkit-overflow-scrolling: touch;
+    }
+    .sidebar .nav { flex-direction: row; }
+    .sidebar .nav-label, .side-foot { display: none; }
+    .wrap { padding: 20px 16px 70px; }
+    .grid-3, .grid-4 { grid-template-columns: 1fr 1fr; }
+    .pdu-head { flex-wrap: wrap; }
+    .pdu-toggle { flex: 1 0 100%; }
+}
+
+/* ---------- phone ----------
+   Sized for iPhone. Three things matter most: inputs at 16px so iOS does not
+   zoom the page on focus, touch targets at 44px, and the home indicator not
+   sitting over the buttons. */
+@media (max-width: 620px) {
+
+    /* --bar-h is the measured height of the sticky action bar */
+    .wrap { padding: 16px 12px calc(var(--bar-h, 120px) + 16px + env(safe-area-inset-bottom)); }
+
+    /* opaque, so nothing shows through it when it wraps to two rows */
+    .sticky-bar {
+        background: var(--bg);
+        border-top: 1px solid var(--border);
+        margin: 0 -12px;
+        padding-left: 12px;
+        padding-right: 12px;
+        box-shadow: 0 -10px 24px -18px rgba(0,0,0,.9);
+    }
+
+    /* the brand block wrapped onto three lines and ate the header */
+    .brand-badge { width: 32px; height: 32px; flex: 0 0 32px; font-size: 11.5px; }
+    .brand-name { font-size: 13px; white-space: nowrap; }
+    .brand-sub { display: none; }
+    .sidebar .nav a { white-space: nowrap; padding: 8px 10px; font-size: 13px; }
+    .sidebar .nav a.soon { display: none; }
+    .sidebar .nav .tag { display: none; }
+
+    .page-title { font-size: 21px; }
+    .page-sub   { font-size: 13px; }
+
+    .section { padding: 14px 13px; border-radius: 14px; }
+    .section-head { gap: 8px; margin-bottom: 12px; }
+    .section-head h2 { font-size: 15px; }
+    .section-head .hint { display: none; }
+
+    /* one field per line - a 4-up grid of date/time/name is unusable here */
+    .grid-4, .grid-3 { grid-template-columns: 1fr; }
+    .strip { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat { padding: 10px 12px; }
+    .stat-v { font-size: 19px; }
+
+    .row, .pdu-body .row { padding: 10px; gap: 8px; }
+    .row-name { font-size: 14px; }
+    .row-meta { font-size: 11.5px; }
+    .row input { padding: 10px 6px; }
+
+    /* a two pole way has one conductor - give it the whole width rather than
+       a third of it next to two dashes */
+    .row.single-phase, .pdu-body .row.single-phase {
+        grid-template-columns: 1fr;
+        grid-template-areas: "n" "r" "y" "b" "c" "a";
+    }
+    .row.single-phase .phase-off { display: none; }
+
+    .pdu-head { padding: 10px 12px; gap: 8px; }
+    .pdu-toggle { padding: 8px; margin: 0 -8px; }
+    .pdu-name { font-size: 13.5px; }
+    .pdu-meta { font-size: 11px; }
+    .pdu-body { padding: 4px 10px 12px; }
+    .pdu-submit { flex: 1 1 100%; }
+
+    .topbar { margin-bottom: 16px; gap: 10px; }
+    .topbar-actions { margin-left: 0; }
+
+    .banner { padding: 11px 12px; font-size: 12.5px; }
+    .footnote { font-size: 11.5px; }
+
+    /* the action bar and the toast must clear the home indicator */
+    .sticky-bar {
+        padding: 12px 0 calc(10px + env(safe-area-inset-bottom));
+        gap: 8px;
+    }
+    /* One row: the action you use constantly stays a full button, the three
+       occasional ones become icons. Two rows of buttons cost a fifth of the
+       screen and this page is mostly scrolling. */
+    .sticky-bar { flex-wrap: nowrap; }
+    .sticky-bar .spacer { display: none; }
+    .sticky-bar #submitAll { flex: 1 1 auto; justify-content: center; min-width: 0; }
+    .sticky-bar #submitAll span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sticky-bar #refreshBtn,
+    .sticky-bar #csvBtn,
+    .sticky-bar #clearBtn {
+        flex: 0 0 44px;
+        width: 44px;
+        padding: 10px 0;
+        justify-content: center;
+        gap: 0;
+    }
+    .sticky-bar .lbl { display: none; }
+    #draftNote { display: none; }
+
+    .status {
+        left: 12px; right: 12px;
+        transform: none;
+        max-width: none;
+        bottom: calc(12px + env(safe-area-inset-bottom));
+        font-size: 13px;
+    }
+    @keyframes toast-in {
+        from { opacity: 0; transform: translateY(10px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+}
+
+/* very narrow - iPhone SE and similar */
+@media (max-width: 380px) {
+    .strip { grid-template-columns: 1fr; }
+    .row, .pdu-body .row { grid-template-areas: "n n n" "r y b" "c c c" "a a a"; }
+    .phase-tag { font-size: 10px; }
+}
+
+/* ---------- touch input ----------
+   Keyed on pointer type rather than width, because a tablet is wide and still
+   needs both of these. 16px fields stop iOS zooming the page on focus, and
+   44px is the smallest target Apple's guidance considers reliable. The per-row
+   Submit is tapped hundreds of times in a round, so it gets the full size. */
+@media (pointer: coarse) {
+    input, select, textarea { font-size: 16px; min-height: 44px; }
+
+    button, .btn { min-height: 44px; padding: 10px 14px; }
+    .btn-sm { min-height: 44px; }
+    .btn-xs { min-height: 44px; padding: 8px 12px; font-size: 12.5px; }
+    .icon-btn { min-width: 44px; min-height: 44px; justify-content: center; }
+
+    .phase-tag { padding: 3px 8px; }
+    .row input { padding: 10px 6px; }
+
+    /* the whole panel header is the tap target, not just the chevron */
+    .pdu-toggle { min-height: 48px; }
+}
+
+/* no hover to rely on, so nothing may depend on it */
+@media (hover: none) {
+    .row.is-spare { opacity: .55; }
+    .btn-xs { color: var(--text-dim); }
+    .row.is-spare:hover { opacity: .55; }
+    .row.is-spare:focus-within { opacity: 1; }
+}
