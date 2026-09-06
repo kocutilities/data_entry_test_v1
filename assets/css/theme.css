@@ -746,6 +746,8 @@ html[data-theme="light"] .banner code { background: rgba(16,24,41,.08); }
     .sidebar .nav a { white-space: nowrap; padding: 8px 10px; font-size: 13px; }
     .sidebar .nav a.soon { display: none; }
     .sidebar .nav .tag { display: none; }
+    /* one page in the group, and it was being clipped mid-word */
+    .sidebar .nav-ref { display: none; }
 
     .page-title { font-size: 21px; }
     .page-sub   { font-size: 13px; }
