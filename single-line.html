@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>Single Line Diagram — KOC Data Center</title>
+<meta name="apple-mobile-web-app-title" content="SLD">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="assets/css/theme.css">
+<style>
+/* ---------- the diagram ---------- */
+
+.sld-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#sld { width: 100%; min-width: 900px; height: auto; display: block; }
+
+/* conductors */
+.wire { fill: none; stroke: var(--border-strong); stroke-width: 2.4; }
+
+/* the moving current */
+.flow {
+    fill: none;
+    stroke: var(--text-faint);
+    stroke-width: 2.4;
+    stroke-dasharray: 9 15;
+    opacity: .30;
+}
+
+.flow.live {
+    opacity: 1;
+    stroke: var(--accent);
+    animation: sld-dash 2s linear infinite;
+}
+
+.flow.live.ok   { stroke: var(--good); }
+.flow.live.warn { stroke: var(--warn); }
+.flow.live.bad  { stroke: var(--bad); }
+
+.flow-gen.live { stroke: var(--warn); }
+.flow-b.live   { stroke: var(--accent-2); }
+
+@keyframes sld-dash { to { stroke-dashoffset: -48; } }
+
+#sld.paused .flow.live { animation-play-state: paused; }
+
+@media (prefers-reduced-motion: reduce) {
+    .flow.live { animation: none; }
+}
+
+/* nodes */
+.node .shape {
+    fill: var(--surface-2);
+    stroke: var(--border-strong);
+    stroke-width: 1.4;
+}
+
+.node { cursor: pointer; }
+.node:hover .shape, .node:focus .shape { stroke: var(--accent); }
+.node:focus { outline: none; }
+.node.sel .shape { stroke: var(--accent); stroke-width: 2.6; }
+
+.node .lbl {
+    fill: var(--text);
+    font: 600 14px/1 -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+.node .lbl.tiny { font-size: 11.5px; }
+.node .sub {
+    fill: var(--text-faint);
+    font: 400 10.5px/1 -apple-system, "Segoe UI", system-ui, sans-serif;
+}
+.node .amps {
+    fill: var(--text-dim);
+    font: 600 11px/1 ui-monospace, Consolas, monospace;
+}
+
+.node.ok   .amps { fill: var(--good); }
+.node.warn .amps { fill: var(--warn); }
+.node.bad  .amps { fill: var(--bad); }
+.node.ok   .shape { stroke: rgba(52,211,153,.5); }
+.node.warn .shape { stroke: rgba(251,191,36,.55); }
+.node.bad  .shape { stroke: rgba(248,113,113,.6); }
+.node.unread .shape { stroke-dasharray: 4 4; opacity: .75; }
+
+.n-transformer .shape { fill: var(--surface-3); }
+.n-generator .shape   { fill: rgba(251,191,36,.10); stroke: rgba(251,191,36,.45); }
+.n-ats .shape         { fill: rgba(139,92,246,.12); stroke: rgba(139,92,246,.45); }
+.n-ups .shape         { fill: rgba(76,125,255,.12); stroke: rgba(76,125,255,.45); }
+.n-busbar .shape      { fill: var(--accent-soft); stroke: rgba(76,125,255,.5); }
+.n-source .shape      { fill: transparent; stroke-dasharray: 5 4; }
+.n-cabins .shape      { fill: var(--surface-3); }
+.n-coupler .shape     { fill: var(--bg-elev); }
+
+.bus-lbl { font-size: 12.5px; letter-spacing: .05em; }
+.bus-sub { font-size: 11px; }
+
+/* ---------- detail panel ---------- */
+
+.detail {
+    position: sticky;
+    bottom: 12px;
+    margin-top: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border-strong);
+    border-radius: 14px;
+    padding: 14px 16px;
+    box-shadow: var(--shadow);
+}
+
+.detail .d-head { display: flex; align-items: baseline; gap: 10px; }
+.detail .d-title { font-size: 15.5px; font-weight: 650; }
+.detail .d-sub { font-size: 12px; color: var(--text-faint); }
+.detail .d-close { margin-left: auto; }
+
+.d-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 18px; margin-top: 10px; }
+.d-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.8px; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+.d-row span { color: var(--text-faint); }
+.d-row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.d-note { margin-top: 10px; font-size: 12.2px; color: var(--text-dim); line-height: 1.55; }
+
+/* ---------- legend ---------- */
+
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 11.8px; color: var(--text-faint); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 20px; height: 3px; border-radius: 2px; display: inline-block; }
+.lg-a { background: var(--good); }
+.lg-w { background: var(--warn); }
+.lg-b { background: var(--bad); }
+.lg-g { background: var(--warn); }
+.lg-n { background: var(--text-faint); opacity: .4; }
+
+@media (max-width: 620px) {
+    .sld-wrap { padding: 6px; }
+    .detail { bottom: calc(6px + env(safe-area-inset-bottom)); }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+        <div class="brand">
+            <div class="brand-badge">DC</div>
+            <div>
+                <div class="brand-name">KOC Data Center</div>
+                <div class="brand-sub">Electrical records</div>
+            </div>
+        </div>
+
+        <div>
+            <div class="nav-label">Readings</div>
+            <nav class="nav">
+                <a href="load-reading.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+                    Load Reading
+                </a>
+                <a href="single-line.html" class="active">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M4 4v6h16V4M4 14v6h16v-6M12 10v4"/></svg>
+                    Single Line Diagram
+                </a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Analysis</div>
+            <nav class="nav">
+                <a class="soon">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 5-7"/></svg>
+                    Power System Assessment
+                    <span class="tag">Soon</span>
+                </a>
+                <a class="soon">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    Additional Load Study
+                    <span class="tag">Soon</span>
+                </a>
+            </nav>
+        </div>
+
+        <div class="nav-ref">
+            <div class="nav-label">Reference</div>
+            <nav class="nav">
+                <a href="index.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 9h18"/></svg>
+                    Project home
+                </a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <div class="side-card">
+                Topology from the Computer Centre single line diagram, issue
+                06-09-26, with nameplate ratings.
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="wrap" style="max-width:1400px">
+
+            <div class="topbar">
+                <div>
+                    <h1 class="page-title">Single Line Diagram</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button id="themeBtn" class="icon-btn" type="button" aria-label="Switch theme">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>Current flow</h2>
+                    <span class="spacer"></span>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <label for="sldDate" style="margin:0">Readings from</label>
+                        <input type="date" id="sldDate" style="width:auto">
+                        <button id="sldRefresh" class="btn-sm" type="button">
+                            <svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+                            <span>Refresh</span>
+                        </button>
+                        <button id="sldFlow" class="btn-sm" type="button">
+                            <svg class="i" viewBox="0 0 24 24"><path d="M10 4v16M14 4v16"/></svg>
+                            <span>Pause flow</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="field-note" id="sldStatus"></div>
+
+                <div class="sld-wrap">
+                    <svg id="sld" role="img" aria-label="Single line diagram from the transformers to the server cabins"></svg>
+                </div>
+
+                <div class="legend">
+                    <span><i class="lg-a"></i> under 80 % of rating</span>
+                    <span><i class="lg-w"></i> 80 – 100 %</span>
+                    <span><i class="lg-b"></i> over rating</span>
+                    <span><i class="lg-n"></i> no reading recorded</span>
+                    <span>· dashes move faster the closer a feeder runs to its rating</span>
+                    <span>· tap any item for its ratings and reading</span>
+                </div>
+
+                <div class="strip" style="margin-top:16px;grid-template-columns:repeat(2,1fr)">
+                    <div class="stat">
+                        <div class="stat-k">Read for this date</div>
+                        <div class="stat-v" id="statRead">0 / 0</div>
+                        <div class="stat-s">feeders on the diagram</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-k">Transformers</div>
+                        <div class="stat-v">2 × 1600 kVA</div>
+                        <div class="stat-s">2133 A each, derated from 2000 kVA</div>
+                    </div>
+                </div>
+
+                <div class="detail" id="detail" hidden>
+                    <div class="d-head">
+                        <span class="d-title"></span>
+                        <span class="d-sub"></span>
+                        <button class="icon-btn btn-sm d-close" id="detailClose" type="button" aria-label="Close">✕</button>
+                    </div>
+                    <div class="d-rows"></div>
+                    <div class="d-note"></div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/sld-config.js"></script>
+<script src="assets/js/sld.js"></script>
+</body>
+</html>
