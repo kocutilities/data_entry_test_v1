@@ -13,6 +13,22 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="assets/css/theme.css">
 <style>
+/* ---------- supply colours, matching the block diagram ---------- */
+:root {
+    --sup-utility: #94a3b8;   /* utility only - lost on incomer failure */
+    --sup-emerg:   #fb923c;   /* generator backed */
+    --sup-a:       #a78bfa;   /* Feed A, UPS-1 */
+    --sup-b:       #2dd4bf;   /* Feed B, UPS-2 */
+    --sup-none:    #f87171;   /* normally open, or no redundancy */
+}
+html[data-theme="light"] {
+    --sup-utility: #475569;
+    --sup-emerg:   #ea580c;
+    --sup-a:       #7c3aed;
+    --sup-b:       #0d9488;
+    --sup-none:    #dc2626;
+}
+
 /* ---------- the diagram ---------- */
 
 .sld-wrap {
@@ -20,91 +36,83 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     box-shadow: var(--shadow);
-    padding: 10px;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
+    padding: 12px;
+    overflow: auto;
 }
 
-#sld { width: 100%; min-width: 900px; height: auto; display: block; }
+#sld { width: 100%; min-width: 2000px; height: auto; display: block; }
 
-/* conductors */
-.wire { fill: none; stroke: var(--border-strong); stroke-width: 2.4; }
+.wire { fill: none; stroke-width: 2.2; }
+.w-utility { stroke: var(--sup-utility); opacity: .40; }
+.w-emerg   { stroke: var(--sup-emerg);   opacity: .38; }
+.w-a       { stroke: var(--sup-a);       opacity: .38; }
+.w-b       { stroke: var(--sup-b);       opacity: .38; }
+.w-open, .w-none { stroke: var(--sup-none); opacity: .5; stroke-dasharray: 7 5; }
 
-/* the moving current */
 .flow {
     fill: none;
-    stroke: var(--text-faint);
-    stroke-width: 2.4;
-    stroke-dasharray: 9 15;
-    opacity: .30;
+    stroke-width: 2.6;
+    stroke-dasharray: 10 16;
+    stroke-linecap: round;
+    opacity: 0;
 }
 
-.flow.live {
-    opacity: 1;
-    stroke: var(--accent);
-    animation: sld-dash 2s linear infinite;
-}
+.flow.live { opacity: 1; animation: sld-dash 2.4s linear infinite; }
 
+.f-utility.live { stroke: var(--sup-utility); }
+.f-emerg.live   { stroke: var(--sup-emerg); }
+.f-a.live       { stroke: var(--sup-a); }
+.f-b.live       { stroke: var(--sup-b); }
+.f-none.live    { stroke: var(--sup-none); }
+
+/* a measured feeder takes its loading colour */
 .flow.live.ok   { stroke: var(--good); }
 .flow.live.warn { stroke: var(--warn); }
 .flow.live.bad  { stroke: var(--bad); }
 
-.flow-gen.live { stroke: var(--warn); }
-.flow-b.live   { stroke: var(--accent-2); }
-
-@keyframes sld-dash { to { stroke-dashoffset: -48; } }
-
+@keyframes sld-dash { to { stroke-dashoffset: -52; } }
 #sld.paused .flow.live { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .flow.live { animation: none; } }
 
-@media (prefers-reduced-motion: reduce) {
-    .flow.live { animation: none; }
-}
-
-/* nodes */
-.node .shape {
-    fill: var(--surface-2);
-    stroke: var(--border-strong);
-    stroke-width: 1.4;
-}
+/* ---------- nodes ---------- */
 
 .node { cursor: pointer; }
-.node:hover .shape, .node:focus .shape { stroke: var(--accent); }
 .node:focus { outline: none; }
+.node .shape { fill: var(--surface-2); stroke: var(--border-strong); stroke-width: 1.4; }
+.node:hover .shape, .node:focus .shape { stroke: var(--accent); }
 .node.sel .shape { stroke: var(--accent); stroke-width: 2.6; }
 
-.node .lbl {
-    fill: var(--text);
-    font: 600 14px/1 -apple-system, "Segoe UI", system-ui, sans-serif;
-}
-.node .lbl.tiny { font-size: 11.5px; }
-.node .sub {
-    fill: var(--text-faint);
-    font: 400 10.5px/1 -apple-system, "Segoe UI", system-ui, sans-serif;
-}
-.node .amps {
-    fill: var(--text-dim);
-    font: 600 11px/1 ui-monospace, Consolas, monospace;
-}
-
-.node.ok   .amps { fill: var(--good); }
+.node .lbl { fill: var(--text); font: 650 13px/1 -apple-system, "Segoe UI", system-ui, sans-serif; }
+.node .lbl.tiny { font-size: 11px; }
+.node .sub { fill: var(--text-faint); font: 400 10px/1 -apple-system, "Segoe UI", system-ui, sans-serif; }
+.node .amps { fill: var(--text-dim); font: 650 11px/1 ui-monospace, Consolas, monospace; }
+.node.ok .amps { fill: var(--good); }
 .node.warn .amps { fill: var(--warn); }
-.node.bad  .amps { fill: var(--bad); }
-.node.ok   .shape { stroke: rgba(52,211,153,.5); }
-.node.warn .shape { stroke: rgba(251,191,36,.55); }
-.node.bad  .shape { stroke: rgba(248,113,113,.6); }
-.node.unread .shape { stroke-dasharray: 4 4; opacity: .75; }
+.node.bad .amps { fill: var(--bad); }
+.node.unread .shape { stroke-dasharray: 4 4; }
 
-.n-transformer .shape { fill: var(--surface-3); }
-.n-generator .shape   { fill: rgba(251,191,36,.10); stroke: rgba(251,191,36,.45); }
-.n-ats .shape         { fill: rgba(139,92,246,.12); stroke: rgba(139,92,246,.45); }
-.n-ups .shape         { fill: rgba(76,125,255,.12); stroke: rgba(76,125,255,.45); }
-.n-busbar .shape      { fill: var(--accent-soft); stroke: rgba(76,125,255,.5); }
-.n-source .shape      { fill: transparent; stroke-dasharray: 5 4; }
-.n-cabins .shape      { fill: var(--surface-3); }
-.n-coupler .shape     { fill: var(--bg-elev); }
+.n-hts .shape         { fill: var(--surface-3); stroke: var(--sup-utility); }
+.n-transformer .shape { fill: var(--surface-3); stroke: rgba(76,125,255,.55); }
+.n-breaker .shape     { fill: var(--surface-2); }
+.n-busbar .shape      { fill: var(--sup-utility); stroke: none; }
+.n-embar .shape       { fill: var(--sup-emerg); stroke: none; }
+.n-coupler .shape     { fill: rgba(248,113,113,.12); stroke: var(--sup-none); stroke-width: 1.8; }
+.n-generator .shape   { fill: rgba(251,146,60,.12); stroke: var(--sup-emerg); stroke-width: 1.8; }
+.n-ats .shape         { fill: rgba(251,146,60,.10); stroke: var(--sup-emerg); }
+.n-ups .shape         { fill: rgba(167,139,250,.12); stroke: var(--sup-a); }
+.n-battery .shape     { fill: var(--surface-3); }
+.n-pdu.s-a .shape     { fill: rgba(167,139,250,.10); stroke: rgba(167,139,250,.5); }
+.n-pdu.s-b .shape     { fill: rgba(45,212,191,.10); stroke: rgba(45,212,191,.5); }
+.n-board.s-emerg .shape { stroke: rgba(251,146,60,.5); }
+.n-zone .shape        { fill: var(--surface-3); }
+.n-norack .shape      { fill: rgba(248,113,113,.10); stroke: var(--sup-none); stroke-width: 1.8; }
+.n-norack .lbl        { fill: var(--sup-none); }
 
-.bus-lbl { font-size: 12.5px; letter-spacing: .05em; }
-.bus-sub { font-size: 11px; }
+.bar-lbl { fill: #0b1020; font-size: 11.5px; letter-spacing: .1em; font-weight: 700; }
+.n-busbar .bar-lbl, .n-embar .bar-lbl { fill: #0b1020; }
+
+/* UPS-2 sits on the B side */
+#sld .n-ups + .n-ups { }
 
 /* ---------- detail panel ---------- */
 
@@ -118,33 +126,29 @@
     padding: 14px 16px;
     box-shadow: var(--shadow);
 }
-
-.detail .d-head { display: flex; align-items: baseline; gap: 10px; }
+.detail .d-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .detail .d-title { font-size: 15.5px; font-weight: 650; }
 .detail .d-sub { font-size: 12px; color: var(--text-faint); }
 .detail .d-close { margin-left: auto; }
-
-.d-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px 18px; margin-top: 10px; }
-.d-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.8px; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+.d-rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px 20px; margin-top: 10px; }
+.d-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12.8px;
+         border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
 .d-row span { color: var(--text-faint); }
-.d-row b { font-weight: 600; font-variant-numeric: tabular-nums; }
+.d-row b { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
 .d-note { margin-top: 10px; font-size: 12.2px; color: var(--text-dim); line-height: 1.55; }
 
 /* ---------- legend ---------- */
 
-.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 12px; font-size: 11.8px; color: var(--text-faint); }
-.legend span { display: inline-flex; align-items: center; gap: 6px; }
-.legend i { width: 20px; height: 3px; border-radius: 2px; display: inline-block; }
-.lg-a { background: var(--good); }
-.lg-w { background: var(--warn); }
-.lg-b { background: var(--bad); }
-.lg-g { background: var(--warn); }
-.lg-n { background: var(--text-faint); opacity: .4; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 12px; font-size: 11.8px; color: var(--text-dim); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 22px; height: 3px; border-radius: 2px; display: inline-block; }
+.lg-u { background: var(--sup-utility); }
+.lg-e { background: var(--sup-emerg); }
+.lg-a { background: var(--sup-a); }
+.lg-b { background: var(--sup-b); }
+.lg-n { background: var(--sup-none); }
 
-@media (max-width: 620px) {
-    .sld-wrap { padding: 6px; }
-    .detail { bottom: calc(6px + env(safe-area-inset-bottom)); }
-}
+.sld-note { margin-top: 12px; font-size: 12px; color: var(--text-faint); line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -247,12 +251,25 @@
                 </div>
 
                 <div class="legend">
-                    <span><i class="lg-a"></i> under 80 % of rating</span>
-                    <span><i class="lg-w"></i> 80 – 100 %</span>
-                    <span><i class="lg-b"></i> over rating</span>
-                    <span><i class="lg-n"></i> no reading recorded</span>
-                    <span>· dashes move faster the closer a feeder runs to its rating</span>
-                    <span>· tap any item for its ratings and reading</span>
+                    <span><i class="lg-u"></i> utility only — lost on incomer failure</span>
+                    <span><i class="lg-e"></i> emergency — generator backed</span>
+                    <span><i class="lg-a"></i> Feed A — UPS-1</span>
+                    <span><i class="lg-b"></i> Feed B — UPS-2</span>
+                    <span><i class="lg-n"></i> normally open / no redundancy</span>
+                </div>
+
+                <div class="sld-note">
+                    Every live conductor flows. The bus coupler does not — it is normally open and
+                    interlocked, so the transformers can never be paralleled and the LV fault level
+                    stays near 37&nbsp;kA against an 80&nbsp;kA busbar. Where a reading exists for the
+                    chosen date the conductor takes its loading colour and speeds up the closer it
+                    runs to its rating. Click any item for its ratings, what feeds it and the day's
+                    currents.
+                    <br><br>
+                    Either UPS alone is intended to carry the whole room, so the usable UPS ceiling
+                    is about 450&nbsp;kW rather than 900&nbsp;kW. Transcribed from the transformer-to-rack
+                    block diagram — single line diagram EI-CC-S/S-001 updated 05-09-26, the server
+                    room layout updated 05-09-26, and the LT panel drawing. Not for construction.
                 </div>
 
                 <div class="strip" style="margin-top:16px;grid-template-columns:repeat(2,1fr)">
@@ -262,9 +279,9 @@
                         <div class="stat-s">feeders on the diagram</div>
                     </div>
                     <div class="stat">
-                        <div class="stat-k">Transformers</div>
-                        <div class="stat-v">2 × 1600 kVA</div>
-                        <div class="stat-s">2133 A each, derated from 2000 kVA</div>
+                        <div class="stat-k">Generator backed</div>
+                        <div class="stat-v">2 sections</div>
+                        <div class="stat-s">ATS-001 via GEN-1 · ATS-002 via GEN-2</div>
                     </div>
                 </div>
 

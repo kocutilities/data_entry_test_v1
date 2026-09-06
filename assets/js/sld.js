@@ -2,13 +2,16 @@
    KOC Data Center - Single Line Diagram
    sld.js
 
-   Draws the SLD from sld-config.js and animates the current flow.
+   Draws the diagram from sld-config.js and runs the current flow.
 
-   The animation is not decoration: where a reading has been recorded for
-   the selected date, that feeder's flow carries its measured current, and
-   the dashes move faster the closer it runs to its rating. A feeder with
-   no reading is drawn dimmed and still, so it is obvious at a glance which
-   parts of the system have been read and which have not.
+   Every energised conductor flows. The bus coupler does not, because it is
+   normally open - a still, red, dashed link is the point being made there.
+
+   Where a reading has been recorded for the chosen date, that feeder's
+   flow takes its loading colour and speeds up the closer it runs to its
+   rating. Where nothing has been recorded the conductor still flows, in
+   its supply colour, because it is still live - the diagram is not a
+   report of what was measured, it is the system.
    ============================================================= */
 
 (function () {
@@ -21,7 +24,6 @@
     var $ = function (id) { return document.getElementById(id); };
     var byId = {};
     var readings = {};
-    var flowing = true;
 
     function el(tag, attrs, parent) {
         var n = document.createElementNS(NS, tag);
@@ -43,38 +45,46 @@
                  t: n.y - n.h / 2, b: n.y + n.h / 2 };
     }
 
-    /* An orthogonal route from the bottom of one node to the top of the
-       next, dropping to a midpoint before stepping across. Straight where
-       the two line up, which is most of the diagram. */
     function route(a, b, e) {
         var A = box(a), B = box(b);
 
-        /* generators come in from the side, along the ATS row */
-        if (a.kind === 'generator') {
+        /* generators and battery banks sit beside what they serve */
+        if (a.kind === 'generator' || b.kind === 'battery') {
             var x1 = a.x < b.x ? A.r : A.l;
             var x2 = a.x < b.x ? B.l : B.r;
-            return 'M' + x1 + ' ' + a.y + ' H' + x2;
+            var y = b.kind === 'battery' ? b.y : a.y;
+            return 'M' + x1 + ' ' + y + ' H' + x2;
         }
 
-        /* Anything meeting a busbar meets it where it stands. Routing to the
-           bar's centre would drag the conductor sideways across whatever sits
-           between, which is how ACB-3 ended up drawn through ATS-001. */
-        if (b.kind === 'busbar') return 'M' + a.x + ' ' + A.b + ' V' + B.t;
-        if (a.kind === 'busbar') return 'M' + b.x + ' ' + A.b + ' V' + B.t;
+        /* the A and B cords cross on their way to a zone, so curve them -
+           straight orthogonal runs here turn into an unreadable lattice */
+        if (e && e.curve) {
+            var sy = A.b, ey = B.t;
+            var cy = sy + (ey - sy) * 0.55;
+            return 'M' + a.x + ' ' + sy +
+                   ' C' + a.x + ' ' + cy + ' ' + b.x + ' ' + (ey - (ey - sy) * 0.55) +
+                   ' ' + b.x + ' ' + ey;
+        }
 
-        /* a spine: drop past the stack, then step in from the side. Without
-           it, feeding a column of boards draws each conductor through the
-           boards above its own. */
-        if (e && e.spine !== undefined) {
-            var sx = e.spine;
-            var into = sx < b.x ? B.l : B.r;
-            return 'M' + a.x + ' ' + A.b + ' V' + b.y + ' H' + into;
+        /* anything meeting a busbar meets it where it stands */
+        if (b.kind === 'busbar' || b.kind === 'embar') {
+            return 'M' + a.x + ' ' + A.b + ' V' + B.t;
+        }
+        if (a.kind === 'busbar' || a.kind === 'embar') {
+            return 'M' + b.x + ' ' + A.b + ' V' + B.t;
+        }
+
+        /* the coupler joins the two sections along the bar */
+        if (a.kind === 'coupler' || b.kind === 'coupler') {
+            var ax = a.kind === 'coupler' ? (a.x < b.x ? A.r : A.l) : (a.x < b.x ? A.r : A.l);
+            var bx = a.kind === 'coupler' ? (a.x < b.x ? B.l : B.r) : (a.x < b.x ? B.l : B.r);
+            return 'M' + ax + ' ' + a.y + ' H' + bx;
         }
 
         var y0 = A.b, y1 = B.t;
         if (Math.abs(a.x - b.x) < 0.6) return 'M' + a.x + ' ' + y0 + ' V' + y1;
 
-        var mid = y0 + (y1 - y0) * 0.45;
+        var mid = y0 + (y1 - y0) * 0.5;
         return 'M' + a.x + ' ' + y0 + ' V' + mid + ' H' + b.x + ' V' + y1;
     }
 
@@ -89,9 +99,8 @@
         return hit ? hit.rated : null;
     }
 
-    /* How hard this node is working, 0..1+, or null if not read. */
     function loadOf(n) {
-        if (!n.key) return null;
+        if (!n || !n.key) return null;
         var r = readings[n.key];
         if (!r) return null;
         var max = Math.max(Number(r.r) || 0, Number(r.y) || 0, Number(r.b) || 0);
@@ -113,53 +122,45 @@
         svg.setAttribute('viewBox', '0 0 ' + SLD.canvas.w + ' ' + SLD.canvas.h);
         while (svg.firstChild) svg.removeChild(svg.firstChild);
 
-        var gEdge = el('g', { class: 'edges' }, svg);
-        var gNode = el('g', { class: 'nodes' }, svg);
+        var gEdge = el('g', {}, svg);
+        var gNode = el('g', {}, svg);
 
         SLD.nodes.forEach(function (n) { byId[n.id] = n; });
 
-        /* edges first, so nodes sit on top of them */
-        SLD.edges.forEach(function (e, i) {
+        SLD.edges.forEach(function (e) {
             var a = byId[e.from], b = byId[e.to];
             if (!a || !b) return;
             var d = route(a, b, e);
-            el('path', { d: d, class: 'wire wire-' + e.side }, gEdge);
-            var f = el('path', { d: d, class: 'flow flow-' + e.side }, gEdge);
+            el('path', { d: d, class: 'wire w-' + e.side }, gEdge);
+            var f = el('path', { d: d, class: 'flow f-' + e.side }, gEdge);
             f.dataset.from = e.from;
             e._flow = f;
         });
 
         SLD.nodes.forEach(function (n) {
             var b = box(n);
-            var g = el('g', { class: 'node n-' + n.kind, tabindex: '0',
-                              role: 'button', 'aria-label': n.label }, gNode);
+            var g = el('g', { class: 'node n-' + n.kind + (n.side ? ' s-' + n.side : ''),
+                              tabindex: '0', role: 'button', 'aria-label': n.label }, gNode);
             g.dataset.id = n.id;
 
-            if (n.kind === 'busbar') {
-                el('rect', { x: b.l, y: b.t, width: n.w, height: n.h,
-                             rx: 6, class: 'shape' }, g);
-                el('text', { x: b.l + 14, y: n.y + 5, class: 'lbl bus-lbl' }, g)
-                    .textContent = n.label;
-                el('text', { x: b.r - 14, y: n.y + 5, class: 'sub bus-sub',
-                             'text-anchor': 'end' }, g).textContent = n.sub;
-            } else if (n.kind === 'coupler') {
-                el('rect', { x: b.l, y: b.t, width: n.w, height: n.h,
-                             rx: 5, class: 'shape' }, g);
-                el('text', { x: n.x, y: n.y + 4, class: 'lbl tiny',
+            var bar = (n.kind === 'busbar' || n.kind === 'embar');
+            el('rect', { x: b.l, y: b.t, width: n.w, height: n.h,
+                         rx: bar ? 4 : (n.kind === 'zone' ? 8 : 7), class: 'shape' }, g);
+
+            if (bar) {
+                el('text', { x: n.x, y: n.y + 4, class: 'lbl bar-lbl',
                              'text-anchor': 'middle' }, g).textContent = n.label;
             } else {
-                el('rect', { x: b.l, y: b.t, width: n.w, height: n.h,
-                             rx: 9, class: 'shape' }, g);
-                var ty = n.sub ? n.y - 3 : n.y + 5;
-                el('text', { x: n.x, y: ty, class: 'lbl' + (n.small ? ' tiny' : ''),
+                var lines = [n.sub, n.sub2, n.sub3].filter(Boolean);
+                var top = n.y - (lines.length * 6);
+                el('text', { x: n.x, y: top, class: 'lbl' + (n.small ? ' tiny' : ''),
                              'text-anchor': 'middle' }, g).textContent = n.label;
-                if (n.sub) {
-                    el('text', { x: n.x, y: n.y + 13, class: 'sub',
-                                 'text-anchor': 'middle' }, g).textContent = n.sub;
-                }
-                /* a slot the measured current is written into */
+                lines.forEach(function (s, i) {
+                    el('text', { x: n.x, y: top + 14 + i * 12, class: 'sub',
+                                 'text-anchor': 'middle' }, g).textContent = s;
+                });
                 if (n.key) {
-                    el('text', { x: n.x, y: b.b + 15, class: 'amps',
+                    el('text', { x: n.x, y: b.b + 14, class: 'amps',
                                  'text-anchor': 'middle' }, g);
                 }
             }
@@ -174,7 +175,6 @@
         annotate();
     }
 
-    /* Put the measured currents on, and set each flow's speed from them. */
     function annotate() {
         var read = 0, total = 0;
 
@@ -192,37 +192,39 @@
             }
             read++;
             if (t) {
-                t.textContent = L.pct === null
-                    ? L.max.toFixed(0) + ' A'
+                t.textContent = L.pct === null ? L.max.toFixed(0) + ' A'
                     : L.max.toFixed(0) + ' A · ' + L.pct.toFixed(0) + '%';
             }
-            var b = band(L.pct);
-            if (b) n._g.classList.add(b);
+            var bd = band(L.pct);
+            if (bd) n._g.classList.add(bd);
         });
 
-        /* a flow moves at a speed set by the load at the node it leaves */
         SLD.edges.forEach(function (e) {
-            if (!e._flow) return;
-            var L = loadOf(byId[e.from]);
             var f = e._flow;
+            if (!f) return;
             f.classList.remove('live', 'ok', 'warn', 'bad');
+
+            /* a normally open link carries nothing */
+            if (e.side === 'open') { f.style.animationDuration = ''; return; }
+
+            f.classList.add('live');
+
+            var L = loadOf(byId[e.from]);
             if (!L || !L.max) {
-                f.style.animationDuration = '';
+                f.style.animationDuration = '2.4s';   /* live, load unknown */
                 return;
             }
-            f.classList.add('live');
-            var b = band(L.pct);
-            if (b) f.classList.add(b);
-            /* 3.2s when idle down to 0.7s at rating */
-            var frac = L.pct === null ? 0.4 : Math.min(L.pct / 100, 1.2);
-            f.style.animationDuration = (3.2 - 2.5 * Math.min(frac, 1)).toFixed(2) + 's';
+            var bd = band(L.pct);
+            if (bd) f.classList.add(bd);
+            var frac = L.pct === null ? 0.4 : Math.min(L.pct / 100, 1);
+            f.style.animationDuration = (3.2 - 2.4 * frac).toFixed(2) + 's';
         });
 
         $('statRead').textContent = read + ' / ' + total;
     }
 
     /* ---------------------------------------------------------
-       details panel
+       details
        --------------------------------------------------------- */
 
     function select(id) {
@@ -234,29 +236,25 @@
         var p = $('detail');
         p.hidden = false;
         p.querySelector('.d-title').textContent = n.label;
-        p.querySelector('.d-sub').textContent = n.sub || '';
+        p.querySelector('.d-sub').textContent = [n.sub, n.sub2, n.sub3].filter(Boolean).join(' · ');
 
-        var L = loadOf(n);
         var rows = [];
-
-        /* what feeds this, and what it feeds - the point of a topology
-           drawing is the connections, so say them in words too */
         var from = SLD.edges.filter(function (e) { return e.to === n.id; })
                             .map(function (e) { return byId[e.from].label; });
         var to = SLD.edges.filter(function (e) { return e.from === n.id; })
                           .map(function (e) { return byId[e.to].label; });
         if (from.length) rows.push(['Fed from', from.join(', ')]);
         if (to.length) rows.push(['Feeds', to.length > 6
-            ? to.slice(0, 5).join(', ') + ' and ' + (to.length - 5) + ' more'
-            : to.join(', ')]);
+            ? to.slice(0, 5).join(', ') + ' and ' + (to.length - 5) + ' more' : to.join(', ')]);
 
         var rated = ratingFor(n.key);
         if (rated) rows.push(['Rating', rated + ' A']);
+
+        var L = loadOf(n);
         if (L) {
             var r = readings[n.key];
             rows.push(['R / Y / B', [r.r, r.y, r.b].map(function (v) {
-                return (v === '' || v === null || v === undefined) ? '—' : v;
-            }).join('  /  ')]);
+                return (v === '' || v === null || v === undefined) ? '—' : v; }).join('  /  ')]);
             rows.push(['Highest phase', L.max.toFixed(1) + ' A']);
             if (L.pct !== null) rows.push(['Loading', L.pct.toFixed(0) + '% of rating']);
         } else if (n.key) {
@@ -265,11 +263,12 @@
 
         var tb = p.querySelector('.d-rows');
         tb.innerHTML = '';
-        rows.forEach(function (r) {
+        rows.forEach(function (rw) {
             var d = document.createElement('div');
             d.className = 'd-row';
-            d.innerHTML = '<span>' + r[0] + '</span><b></b>';
-            d.querySelector('b').textContent = r[1];
+            d.innerHTML = '<span></span><b></b>';
+            d.querySelector('span').textContent = rw[0];
+            d.querySelector('b').textContent = rw[1];
             tb.appendChild(d);
         });
 
@@ -278,17 +277,13 @@
     }
 
     /* ---------------------------------------------------------
-       loading the day's readings
+       the day's readings
        --------------------------------------------------------- */
 
     function setBadge(msg, busy) {
         var b = $('sldStatus');
         b.innerHTML = '';
-        if (busy) {
-            var s = document.createElement('span');
-            s.className = 'spinner';
-            b.appendChild(s);
-        }
+        if (busy) { var s = document.createElement('span'); s.className = 'spinner'; b.appendChild(s); }
         var t = document.createElement('span');
         t.textContent = msg;
         b.appendChild(t);
@@ -299,7 +294,7 @@
         readings = {};
 
         if (!endpointUrl()) {
-            setBadge('No sheet connected on this device — open the Load Reading page to connect');
+            setBadge('No sheet connected on this device — the diagram is live, the currents are not');
             annotate();
             return Promise.resolve();
         }
@@ -307,8 +302,7 @@
 
         setBadge('Reading the sheet…', true);
         return fetch(endpointUrl(), {
-            method: 'POST',
-            body: JSON.stringify({ type: 'status', date: date })
+            method: 'POST', body: JSON.stringify({ type: 'status', date: date })
         })
             .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(function (d) {
@@ -343,9 +337,10 @@
         $('sldDate').addEventListener('change', load);
         $('sldRefresh').addEventListener('click', load);
 
+        var flowing = true;
         $('sldFlow').addEventListener('click', function () {
             flowing = !flowing;
-            document.getElementById('sld').classList.toggle('paused', !flowing);
+            $('sld').classList.toggle('paused', !flowing);
             $('sldFlow').lastElementChild.textContent = flowing ? 'Pause flow' : 'Resume flow';
         });
 

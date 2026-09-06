@@ -1,176 +1,231 @@
 /* =============================================================
    KOC Data Center - Single Line Diagram
-   sld-config.js  -  the topology and where every part sits.
+   sld-config.js  -  topology and layout.
 
-   Ratings and feed points are the same ones config.js carries, so the
-   diagram and the reading page cannot drift apart.
+   Transcribed from the KOC Computer Center transformer-to-server-rack
+   block diagram, which is drawn from single line diagram EI-CC-S/S-001
+   updated 05-09-26, the server room layout updated 05-09-26, and the LT
+   panel drawing (ATS & Maintained Board).
 
-   'key' ties a node to the sheet, using the same category|equipment|circuit
-   key the reading page uses. A node with a key can show a measured current;
-   one without is drawn from the drawings alone.
+   The thing this diagram exists to show is which loads survive an incomer
+   failure. Two supplies do that and they are separate:
 
-   Sources
-     transformer nameplate      ELIN, serial 1.538710, 1600 kVA, 84 A HV /
-                                2133 A LV, which puts the HV side at 11 kV
-     generator nameplates       Munartech DD1000 s/n M0471-7, 1000 kVA 415 V
-                                1391 A; Caterpillar 3512 s/n YAY 01204,
-                                1360 kVA 440 V 1640 A
-     LT board                   Computer Centre LT panel drawing - board
-                                title ATS & MAINTAINED BOARD, 3000 A busbar,
-                                415 V system
-     feeder ways and order      Computer Centre single line diagram, 06-09-26
-     PDU feeds                  PDU single line diagrams - PDU 7 fed from
-                                ESMSB-1, PDU 8 from ESMSB-2
+     ATS-001  built into the LT switchboard, ACB-1 / ACB-2 2000 A
+              interlocked, changed over automatically by GENERATOR 1.
+              It backs the EMERGENCY section - EMSB-1, EMSB-4, EDB-27,
+              B.C & F.P, EMSB-9, EMSB-3.
+
+     ATS-002  a separate ASCO 7000 panel in the ATS Room, 2000 A, fed from
+              Section A way 9A and by GENERATOR 2. It backs EDB-28, the
+              generator control panel, EMSB-2 and EMCC-1.
+
+   Everything else on the board - MSB-10, MSB-8, M.C.C-2, MSB-7, DB-2 - is
+   utility only and is lost when its incomer is lost.
+
+   'key' ties a node to the sheet using the same category|equipment|circuit
+   key the reading page uses, so a node with a key can carry a measured
+   current. Ratings come from config.js so the two pages cannot drift.
    ============================================================= */
 
 const SLD = (function () {
 
-    var W = 1620;
-
-    var nodes = [];
-    var edges = [];
-
+    var nodes = [], edges = [];
     function node(o) { nodes.push(o); return o; }
     function edge(from, to, o) {
-        edges.push(Object.assign({ from: from, to: to, side: 'main' }, o || {}));
+        edges.push(Object.assign({ from: from, to: to, side: 'utility' }, o || {}));
     }
 
-    /* ---------- incoming, transformers, main breakers ---------- */
+    var XB = 700, XA = 1850;          /* the two incomer columns */
 
-    var XA = 430, XB = 1130;          /* the two incomer columns */
+    /* ---------------- utility supply ---------------- */
 
-    node({ id: 'hvA', kind: 'source', x: XA, y: 46, w: 150, h: 40,
-           label: '11 kV', sub: 'Incomer A' });
-    node({ id: 'hvB', kind: 'source', x: XB, y: 46, w: 150, h: 40,
-           label: '11 kV', sub: 'Incomer B' });
+    node({ id: 'hts', kind: 'hts', x: 1275, y: 54, w: 700, h: 50,
+           label: 'M.E.W. AHMADI-M → COMPUTER CENTRE HT S/S', sub: '11 kV' });
 
-    node({ id: 'trA', kind: 'transformer', x: XA, y: 150, w: 170, h: 62,
-           label: 'TR-A', sub: '1600 kVA · 2133 A',
-           note: 'ELIN 1.538710. 2000 kVA nameplate derated to 1600 kVA at ' +
-                 'Kuwait ambient, per KOC-E-003 cl. 11.2.2.' });
-    node({ id: 'trB', kind: 'transformer', x: XB, y: 150, w: 170, h: 62,
-           label: 'TR-B', sub: '1600 kVA · 2133 A' });
+    node({ id: 'trB', kind: 'transformer', x: XB, y: 168, w: 300, h: 66,
+           label: 'TRANSFORMER B', sub: '1600 kVA · 11 kV / 433 V · Dy11 · Z 5.74 %',
+           note: 'FLC 2133 A. ONAN, 1981. Nameplate serial 1.538710 - a ' +
+                 '2000 kVA unit derated to 1600 kVA at Kuwait ambient.' });
+    node({ id: 'trA', kind: 'transformer', x: XA, y: 168, w: 300, h: 66,
+           label: 'TRANSFORMER A', sub: '1600 kVA · 11 kV / 433 V · Dy11 · Z 5.74 %',
+           note: 'FLC 2133 A. ONAN, 1981.' });
 
-    node({ id: 'acb4', kind: 'breaker', x: XA, y: 250, w: 128, h: 40,
-           label: 'ACB-4', key: 'Main|Incomer A|',
-           note: 'Transformer A incomer. Readings recorded against Incomer A.' });
-    node({ id: 'acb3', kind: 'breaker', x: XB, y: 250, w: 128, h: 40,
-           label: 'ACB-3', key: 'Main|Incomer B|',
-           note: 'Transformer B incomer. Readings recorded against Incomer B.' });
+    node({ id: 'acb3', kind: 'breaker', x: XB, y: 268, w: 210, h: 44,
+           label: 'ACB-3 · 3200 A', sub: 'normally closed · B.C 65 kA',
+           key: 'Main|Incomer B|' });
+    node({ id: 'acb4', kind: 'breaker', x: XA, y: 268, w: 210, h: 44,
+           label: 'ACB-4 · 3200 A', sub: 'normally closed · B.C 65 kA',
+           key: 'Main|Incomer A|' });
 
-    edge('hvA', 'trA'); edge('hvB', 'trB');
-    edge('trA', 'acb4'); edge('trB', 'acb3');
+    edge('hts', 'trB'); edge('hts', 'trA');
+    edge('trB', 'acb3'); edge('trA', 'acb4');
 
-    /* ---------- generators into ATS-001 ---------- */
+    /* ---------------- the LT board ---------------- */
 
-    node({ id: 'gen1', kind: 'generator', x: 110, y: 330, w: 176, h: 62,
-           label: 'GEN-1', sub: '1000 kVA · 1391 A',
-           note: 'Munartech DD1000, s/n M0471-7, 800 kW, 415 V, 1500 rpm.' });
-    node({ id: 'gen2', kind: 'generator', x: 1450, y: 330, w: 176, h: 62,
-           label: 'GEN-2', sub: '1360 kVA · 1640 A',
-           note: 'Caterpillar 3512, s/n YAY 01204, 1088 kW, 440 V, 1500 rpm. ' +
-                 '1640 A is the nameplate figure, which corresponds to ' +
-                 '1360 kVA at 480 V rather than at 440 V.' });
+    node({ id: 'busB', kind: 'busbar', x: 700, y: 360, w: 900, h: 22,
+           label: 'SECTION B BUSBAR',
+           note: 'ATS & Maintained Board. System 415 / 240 V, 3 Ph 4 W, ' +
+                 '50 Hz. Busbar 3000 A, 80 kA for 1 s.' });
+    node({ id: 'busA', kind: 'busbar', x: 1850, y: 360, w: 900, h: 22,
+           label: 'SECTION A BUSBAR' });
 
-    node({ id: 'ats1', kind: 'ats', x: 880, y: 330, w: 200, h: 44,
-           label: 'ATS-001', sub: 'built into the LT board',
+    node({ id: 'coupler', kind: 'coupler', x: 1275, y: 360, w: 226, h: 52,
+           label: 'BUS COUPLER · 3200 A', sub: 'normally open · interlocked',
+           note: '4P manual switch disconnector. The interlock permits any ' +
+                 'two of ACB-3, ACB-4 and the coupler, so the transformers ' +
+                 'can never be paralleled and the LV fault level stays near ' +
+                 '37 kA against an 80 kA busbar.' });
+
+    edge('acb3', 'busB'); edge('acb4', 'busA');
+    edge('busB', 'coupler', { side: 'open' });
+    edge('coupler', 'busA', { side: 'open' });
+
+    /* ---------------- ATS-001 and the emergency section ---------------- */
+
+    node({ id: 'gen1', kind: 'generator', x: 140, y: 424, w: 210, h: 78,
+           label: 'GENERATOR 1', sub: 'Munartech DD1000 · 1000 kVA · 1391 A · 415 V',
+           note: 's/n M0471-7, 800 kW, 1500 rpm. Connects through a 2000 A ' +
+                 'ACB-2 emergency breaker.' });
+
+    node({ id: 'ats1', kind: 'ats', x: 660, y: 424, w: 600, h: 52,
+           label: 'ATS-001 · BUILT INTO THE SWITCHBOARD',
+           sub: 'ACB-1 / ACB-2 · 2000 A · interlocked · auto changeover',
            note: 'Not a separate cubicle - it is part of the LT switchboard.' });
 
-    edge('gen1', 'ats1', { side: 'gen' });
-    edge('gen2', 'ats1', { side: 'gen' });
+    node({ id: 'ebar', kind: 'embar', x: 660, y: 496, w: 760, h: 20,
+           label: 'EMERGENCY (GENERATOR-BACKED) SECTION' });
 
-    /* ---------- the LT board ---------- */
+    edge('busB', 'ats1', { side: 'utility' });
+    edge('gen1', 'ats1', { side: 'emerg' });
+    edge('ats1', 'ebar', { side: 'emerg' });
 
-    node({ id: 'bus', kind: 'busbar', x: 780, y: 412, w: 1300, h: 30,
-           label: 'ATS & MAINTAINED BOARD',
-           sub: '415 V · 3000 A busbar',
-           note: 'Two sections joined by a bus coupler with no automatic ' +
-                 'function - isolation and coupling are both manual.' });
+    /* ---------------- feeders ---------------- */
 
-    node({ id: 'coupler', kind: 'coupler', x: 780, y: 412, w: 34, h: 26,
-           label: 'BC', sub: 'bus coupler, manual' });
-
-    edge('acb4', 'bus'); edge('acb3', 'bus'); edge('ats1', 'bus');
-
-    /* ---------- feeders, in single line diagram order ---------- */
-
-    var FEEDERS = [
-        ['EMSB 1',  '1D'], ['EMSB 4',  '1C'], ['EDB 27',  '1B'],
-        ['B.C & F.P', '1A'], ['EMSB 9', '2D'], ['EMSB 3',  '2B'],
-        ['MSB 10',  '6D'], ['MSB 8',   '8B'], ['MCC 2',   '8D'],
-        ['MSB 7',   '8E'], ['DB 2',    '8F'], ['ATS 002', '9A']
-    ];
-    var NAMEKEY = { 'B.C & F.P': 'Battery Charger & Fuel Pump' };
-
-    var fx0 = 150, fx1 = 1410, fy = 530;
-    FEEDERS.forEach(function (f, i) {
-        var name = f[0];
-        var full = NAMEKEY[name] || name;
-        node({ id: 'f' + i, kind: 'board', label: name, sub: 'way ' + f[1],
-               x: fx0 + (fx1 - fx0) * i / (FEEDERS.length - 1), y: fy,
-               w: 104, h: 44, key: 'Main|' + full + '|' });
-        edge('bus', 'f' + i);
+    var EM = [['EMSB-1', '1D · 1000 A', 'EMSB 1'], ['EMSB-4', '1C · 400 A', 'EMSB 4'],
+              ['EDB-27', '1B · 125 A', 'EDB 27'], ['B.C & F.P', '1A · 125 A', 'Battery Charger & Fuel Pump'],
+              ['EMSB-9', '2D · 800 A', 'EMSB 9'], ['EMSB-3', '2B · 400 A', 'EMSB 3']];
+    EM.forEach(function (f, i) {
+        node({ id: 'em' + i, kind: 'board', x: 330 + i * 132, y: 596, w: 118, h: 46,
+               label: f[0], sub: f[1], key: 'Main|' + f[2] + '|', side: 'emerg' });
+        edge('ebar', 'em' + i, { side: 'emerg' });
     });
 
-    /* ---------- A side: EMSB 1 -> UPS 1 -> ESMSB-1 -> PDUs ---------- */
+    node({ id: 'msb10', kind: 'board', x: 1125, y: 596, w: 112, h: 46,
+           label: 'MSB-10', sub: '6D · 630 A', key: 'Main|MSB 10|',
+           note: 'E Building. Utility only - lost if Section B is lost.' });
+    edge('busB', 'msb10');
 
-    node({ id: 'ups1', kind: 'ups', x: 330, y: 656, w: 168, h: 50,
-           label: 'UPS-1', sub: '500 kVA' });
-    node({ id: 'esmsb1', kind: 'board', x: 330, y: 750, w: 168, h: 46,
-           label: 'ESMSB-1', sub: 'A side' });
-    edge('f0', 'ups1', { side: 'a' });
+    var UT = [['MSB-8', '8B · 400 A', 'MSB 8', 'D Bldg'], ['M.C.C-2', '8D · 800 A', 'MCC 2', ''],
+              ['MSB-7', '8E · 400 A', 'MSB 7', 'C Bldg'], ['DB-2', '8F · 125 A', 'DB 2', 'Gen room'],
+              ['ATS-002', '9A · 2000 A', 'ATS 002', '']];
+    UT.forEach(function (f, i) {
+        node({ id: 'ut' + i, kind: 'board', x: 1470 + i * 190, y: 596, w: 130, h: 46,
+               label: f[0], sub: f[1], key: 'Main|' + f[2] + '|',
+               note: f[3] ? f[3] + '. Utility only unless backed downstream.' : '' });
+        edge('busA', 'ut' + i);
+    });
+
+    /* ---------------- ATS-002 ---------------- */
+
+    node({ id: 'gen2', kind: 'generator', x: 2380, y: 700, w: 200, h: 78,
+           label: 'GENERATOR 2', sub: 'Caterpillar 3512 · 1360 kVA · 1640 A · 440 V',
+           note: 's/n YAY 01204, 1088 kW, 1500 rpm, plus a 400 kW load bank. ' +
+                 '1640 A on the plate corresponds to 1360 kVA at 480 V rather ' +
+                 'than at the 440 V also printed on it.' });
+
+    node({ id: 'ats2', kind: 'ats', x: 1960, y: 700, w: 620, h: 52,
+           label: 'ATS-002 · AUTOMATIC TRANSFER SWITCH',
+           sub: 'ASCO Series 7000 · 2000 A · separate panel in ATS Room' });
+
+    node({ id: 'a2bar', kind: 'embar', x: 1960, y: 772, w: 600, h: 20,
+           label: 'ATS-002 PANEL BUSBAR · 2000 A, 3P & N' });
+
+    edge('ut4', 'ats2');
+    edge('gen2', 'ats2', { side: 'emerg' });
+    edge('ats2', 'a2bar', { side: 'emerg' });
+
+    var A2 = [['ATS ROOM EDB-28', 'L6 · 40 A', 'EDB 28'],
+              ['GEN. CTRL PANEL', 'L5 · 125 A', 'Generator Control Panel'],
+              ['EMSB-2', 'L1 · 1000 A', 'EMSB 2'],
+              ['EMCC-1', 'L2 · 800 A', 'EMCC 1']];
+    A2.forEach(function (f, i) {
+        node({ id: 'a2_' + i, kind: 'board', x: 1735 + i * 150, y: 856, w: 138, h: 46,
+               label: f[0], sub: f[1], key: 'Main|' + f[2] + '|', small: true });
+        edge('a2bar', 'a2_' + i, { side: 'emerg' });
+    });
+
+    /* ---------- EMSB-9 sub-distribution, and the racks with no UPS ---------- */
+
+    node({ id: 'edb24', kind: 'board', x: 140, y: 700, w: 210, h: 52,
+           label: 'EDB-24', sub: 'EMSB-9 way 6 · 63 A',
+           note: 'EMSB-9 also feeds EDB-25 (way 7, 63 A) and EDB-26 ' +
+                 '(way 4, 65 A, corridor).' });
+    edge('em4', 'edb24', { side: 'emerg' });
+
+    node({ id: 'k0102', kind: 'norack', x: 140, y: 1150, w: 220, h: 76,
+           label: 'RACK-K01 / K02', sub: '3-phase, from EDB-24 · 31 kW',
+           note: 'Single supply and no UPS. These two racks are the exception ' +
+                 'to the dual-corded arrangement everything else uses.' });
+    edge('edb24', 'k0102', { side: 'none' });
+
+    /* ---------------- UPS chains ---------------- */
+
+    node({ id: 'ups1', kind: 'ups', x: 660, y: 950, w: 320, h: 56,
+           label: '500 kVA UPS-1', sub: '1000 A ACB in · 2 × 800 A ACB main/bypass' });
+    node({ id: 'bat1', kind: 'battery', x: 940, y: 950, w: 160, h: 48,
+           label: 'BATTERY BANK', sub: '240 Nos · 1000 Ah' });
+    node({ id: 'esmsb1', kind: 'board', x: 660, y: 1046, w: 440, h: 44,
+           label: 'ESMSB-1 · 630 A TP MCCB incomer' });
+
+    edge('em0', 'ups1', { side: 'a' });
+    edge('ups1', 'bat1', { side: 'a' });
     edge('ups1', 'esmsb1', { side: 'a' });
 
-    /* ---------- B side: ATS 002 -> EMSB 2 -> UPS 2 -> ESMSB-2 ---------- */
+    node({ id: 'ups2', kind: 'ups', x: 2035, y: 950, w: 320, h: 56,
+           label: '500 kVA UPS-2', sub: '1000 A ACB in · 2 × 800 A ACB main/bypass' });
+    node({ id: 'bat2', kind: 'battery', x: 2315, y: 950, w: 160, h: 48,
+           label: 'BATTERY BANK', sub: '240 Nos · 1000 Ah' });
+    node({ id: 'esmsb2', kind: 'board', x: 2035, y: 1046, w: 440, h: 44,
+           label: 'ESMSB-2 · 630 A TP MCCB incomer' });
 
-    node({ id: 'emsb2', kind: 'board', x: 1230, y: 656, w: 168, h: 46,
-           label: 'EMSB 2', sub: 'ATS-002 way L1', key: 'Main|EMSB 2|' });
-    node({ id: 'ups2', kind: 'ups', x: 1230, y: 742, w: 168, h: 50,
-           label: 'UPS-2', sub: '500 kVA' });
-    node({ id: 'esmsb2', kind: 'board', x: 1230, y: 836, w: 168, h: 46,
-           label: 'ESMSB-2', sub: 'B side' });
-    edge('f11', 'emsb2', { side: 'b' });
-    edge('emsb2', 'ups2', { side: 'b' });
+    edge('a2_2', 'ups2', { side: 'b' });
+    edge('ups2', 'bat2', { side: 'b' });
     edge('ups2', 'esmsb2', { side: 'b' });
 
-    /* the rest of what ATS-002 feeds */
-    var ATS2 = [['EMCC 1', 'L2', 'Main|EMCC 1|'],
-                ['Gen Control Panel', 'L5', 'Main|Generator Control Panel|'],
-                ['EDB 28', 'L6', 'Main|EDB 28|']];
-    ATS2.forEach(function (a, i) {
-        node({ id: 'a2_' + i, kind: 'board', label: a[0], sub: 'way ' + a[1],
-               x: 1500, y: 656 + i * 66, w: 150, h: 40, key: a[2], small: true });
-        edge('f11', 'a2_' + i, { side: 'b', spine: 1410 });
-    });
+    /* ---------------- PDUs ---------------- */
 
-    /* ---------- PDUs ---------- */
+    var PA = ['PDU 1', 'PDU 3', 'PDU 5', 'PDU 7'];
+    var PB = ['PDU 6', 'PDU 2', 'PDU 4', 'PDU 8'];
 
-    var PDUA = ['PDU 1', 'PDU 3', 'PDU 5', 'PDU 7'];
-    var PDUB = ['PDU 6', 'PDU 2', 'PDU 4', 'PDU 8'];
-    var py = 960;
-
-    PDUA.forEach(function (p, i) {
-        node({ id: 'pa' + i, kind: 'pdu', label: p, sub: 'Feed A',
-               x: 180 + i * 132, y: py, w: 116, h: 46, key: 'Main|' + p + '|' });
+    PA.forEach(function (p, i) {
+        node({ id: 'pa' + i, kind: 'pdu', x: 495 + i * 124, y: 1136, w: 114, h: 46,
+               label: p.replace(' ', '-'), sub: 'Feed A', key: 'Main|' + p + '|', side: 'a' });
         edge('esmsb1', 'pa' + i, { side: 'a' });
     });
-    PDUB.forEach(function (p, i) {
-        node({ id: 'pb' + i, kind: 'pdu', label: p, sub: 'Feed B',
-               x: 1000 + i * 132, y: py, w: 116, h: 46, key: 'Main|' + p + '|' });
+    PB.forEach(function (p, i) {
+        node({ id: 'pb' + i, kind: 'pdu', x: 1870 + i * 124, y: 1136, w: 114, h: 46,
+               label: p.replace(' ', '-'), sub: 'Feed B', key: 'Main|' + p + '|', side: 'b' });
         edge('esmsb2', 'pb' + i, { side: 'b' });
     });
 
-    /* ---------- the cabins ---------- */
+    /* ---------------- zones ---------------- */
 
-    node({ id: 'cabins', kind: 'cabins', x: 780, y: 1120, w: 1180, h: 76,
-           label: 'Server cabins',
-           sub: '144 cabinets, each dual corded — one A-side cord, one B-side',
-           note: 'Every cabin takes one supply from an A-side PDU and one ' +
-                 'from a B-side PDU, so either side can be lost without ' +
-                 'dropping the load.' });
+    var ZONES = [
+        ['ZONE 1', 'PDU-1 + PDU-6', '27 racks · A / B / K', '236 kW', 'pa0', 'pb0'],
+        ['ZONE 2', 'PDU-3 + PDU-2', '39 racks · B / C / D / E', '254 kW', 'pa1', 'pb1'],
+        ['ZONE 3', 'PDU-5 + PDU-4', '14 racks · F / G', '133 kW', 'pa2', 'pb2'],
+        ['ZONE 4', 'PDU-7 + PDU-8', '33 racks · M / L', 'not scheduled', 'pa3', 'pb3']
+    ];
+    ZONES.forEach(function (z, i) {
+        node({ id: 'z' + i, kind: 'zone', x: 1090 + i * 240, y: 1312, w: 214, h: 88,
+               label: z[0], sub: z[1], sub2: z[2], sub3: z[3],
+               note: 'Every rack takes one cord from ' + z[1].split(' + ')[0] +
+                     ' and one from ' + z[1].split(' + ')[1] + ', on the two ' +
+                     'different UPS systems, so losing either side leaves the ' +
+                     'servers running.' });
+        edge(z[4], 'z' + i, { side: 'a', curve: true });
+        edge(z[5], 'z' + i, { side: 'b', curve: true });
+    });
 
-    PDUA.forEach(function (p, i) { edge('pa' + i, 'cabins', { side: 'a' }); });
-    PDUB.forEach(function (p, i) { edge('pb' + i, 'cabins', { side: 'b' }); });
-
-    return { canvas: { w: W, h: 1240 }, nodes: nodes, edges: edges };
+    return { canvas: { w: 2520, h: 1430 }, nodes: nodes, edges: edges };
 })();
