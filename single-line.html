@@ -31,16 +31,44 @@ html[data-theme="light"] {
 
 /* ---------- the diagram ---------- */
 
+.sld-page { max-width: none; padding: 14px 18px 10px; }
+.sld-page .section { padding: 12px 14px; margin-bottom: 10px; }
+.sld-page .section-head { margin-bottom: 8px; }
+.sld-page .topbar { margin-bottom: 10px; }
+
 .sld-wrap {
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 12px;
+    border-radius: 12px;
+    padding: 8px;
     overflow: auto;
+    /* filled in by fit(): the height left once the page chrome is measured */
+    height: var(--sld-h, 620px);
 }
 
-#sld { width: 100%; min-width: 2000px; height: auto; display: block; }
+/* At zoom 1 the drawing is scaled to fit the box exactly, so the whole
+   system is visible at once. Above 1 it overflows and the box scrolls. */
+#sld {
+    display: block;
+    width: calc(100% * var(--zoom, 1));
+    height: calc(100% * var(--zoom, 1));
+}
+
+.zoomer { display: inline-flex; align-items: center; gap: 4px; }
+.zoomer .btn-sm { padding: 6px 10px; min-width: 34px; justify-content: center; }
+#zLevel { font-size: 11.5px; color: var(--text-faint); min-width: 42px; text-align: right;
+          font-variant-numeric: tabular-nums; }
+
+.fold { margin-top: 8px; }
+.fold summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center;
+    gap: 14px; flex-wrap: wrap; padding: 4px 0;
+}
+.fold summary::-webkit-details-marker { display: none; }
+.fold-more { font-size: 11.5px; color: var(--accent); }
+.fold-more::after { content: " ▸"; }
+.fold[open] .fold-more::after { content: " ▾"; }
+.legend.inline { margin-top: 0; }
 
 .wire { fill: none; stroke-width: 2.2; }
 .w-utility { stroke: var(--sup-utility); opacity: .40; }
@@ -82,10 +110,10 @@ html[data-theme="light"] {
 .node:hover .shape, .node:focus .shape { stroke: var(--accent); }
 .node.sel .shape { stroke: var(--accent); stroke-width: 2.6; }
 
-.node .lbl { fill: var(--text); font: 650 13px/1 -apple-system, "Segoe UI", system-ui, sans-serif; }
-.node .lbl.tiny { font-size: 11px; }
-.node .sub { fill: var(--text-faint); font: 400 10px/1 -apple-system, "Segoe UI", system-ui, sans-serif; }
-.node .amps { fill: var(--text-dim); font: 650 11px/1 ui-monospace, Consolas, monospace; }
+.node .lbl { fill: var(--text); font: 650 16px/1 -apple-system, "Segoe UI", system-ui, sans-serif; }
+.node .lbl.tiny { font-size: 13px; }
+.node .sub { fill: var(--text-faint); font: 400 13px/1 -apple-system, "Segoe UI", system-ui, sans-serif; }
+.node .amps { fill: var(--text-dim); font: 650 13px/1 ui-monospace, Consolas, monospace; }
 .node.ok .amps { fill: var(--good); }
 .node.warn .amps { fill: var(--warn); }
 .node.bad .amps { fill: var(--bad); }
@@ -108,7 +136,7 @@ html[data-theme="light"] {
 .n-norack .shape      { fill: rgba(248,113,113,.10); stroke: var(--sup-none); stroke-width: 1.8; }
 .n-norack .lbl        { fill: var(--sup-none); }
 
-.bar-lbl { fill: #0b1020; font-size: 11.5px; letter-spacing: .1em; font-weight: 700; }
+.bar-lbl { fill: #0b1020; font-size: 14px; letter-spacing: .1em; font-weight: 700; }
 .n-busbar .bar-lbl, .n-embar .bar-lbl { fill: #0b1020; }
 
 /* UPS-2 sits on the B side */
@@ -117,9 +145,13 @@ html[data-theme="light"] {
 /* ---------- detail panel ---------- */
 
 .detail {
-    position: sticky;
-    bottom: 12px;
-    margin-top: 14px;
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 14px;
+    z-index: 40;
+    width: min(880px, calc(100vw - 40px));
+    margin-top: 0;
     background: var(--surface);
     border: 1px solid var(--border-strong);
     border-radius: 14px;
@@ -213,13 +245,17 @@ html[data-theme="light"] {
     </aside>
 
     <main class="main">
-        <div class="wrap" style="max-width:1400px">
+        <div class="wrap sld-page">
 
             <div class="topbar">
                 <div>
                     <h1 class="page-title">Single Line Diagram</h1>
                 </div>
                 <div class="topbar-actions">
+                    <button id="dockBtn" class="icon-btn dock-btn" type="button"
+                            title="Collapse the navigation" aria-label="Collapse the navigation">
+                        <svg class="i" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/><path d="M4 4v16"/></svg>
+                    </button>
                     <button id="themeBtn" class="icon-btn" type="button" aria-label="Switch theme">
                         <svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
                     </button>
@@ -241,6 +277,12 @@ html[data-theme="light"] {
                             <svg class="i" viewBox="0 0 24 24"><path d="M10 4v16M14 4v16"/></svg>
                             <span>Pause flow</span>
                         </button>
+                        <span class="zoomer">
+                            <button id="zOut" class="btn-sm" type="button" aria-label="Zoom out">−</button>
+                            <button id="zFit" class="btn-sm" type="button">Fit</button>
+                            <button id="zIn" class="btn-sm" type="button" aria-label="Zoom in">+</button>
+                            <span id="zLevel">100%</span>
+                        </span>
                     </div>
                 </div>
 
@@ -250,40 +292,33 @@ html[data-theme="light"] {
                     <svg id="sld" role="img" aria-label="Single line diagram from the transformers to the server cabins"></svg>
                 </div>
 
-                <div class="legend">
-                    <span><i class="lg-u"></i> utility only — lost on incomer failure</span>
-                    <span><i class="lg-e"></i> emergency — generator backed</span>
-                    <span><i class="lg-a"></i> Feed A — UPS-1</span>
-                    <span><i class="lg-b"></i> Feed B — UPS-2</span>
-                    <span><i class="lg-n"></i> normally open / no redundancy</span>
-                </div>
-
-                <div class="sld-note">
-                    Every live conductor flows. The bus coupler does not — it is normally open and
-                    interlocked, so the transformers can never be paralleled and the LV fault level
-                    stays near 37&nbsp;kA against an 80&nbsp;kA busbar. Where a reading exists for the
-                    chosen date the conductor takes its loading colour and speeds up the closer it
-                    runs to its rating. Click any item for its ratings, what feeds it and the day's
-                    currents.
-                    <br><br>
-                    Either UPS alone is intended to carry the whole room, so the usable UPS ceiling
-                    is about 450&nbsp;kW rather than 900&nbsp;kW. Transcribed from the transformer-to-rack
-                    block diagram — single line diagram EI-CC-S/S-001 updated 05-09-26, the server
-                    room layout updated 05-09-26, and the LT panel drawing. Not for construction.
-                </div>
-
-                <div class="strip" style="margin-top:16px;grid-template-columns:repeat(2,1fr)">
-                    <div class="stat">
-                        <div class="stat-k">Read for this date</div>
-                        <div class="stat-v" id="statRead">0 / 0</div>
-                        <div class="stat-s">feeders on the diagram</div>
+                <details class="fold">
+                    <summary>
+                        <span class="legend inline">
+                            <span><i class="lg-u"></i> utility only</span>
+                            <span><i class="lg-e"></i> generator backed</span>
+                            <span><i class="lg-a"></i> Feed A · UPS-1</span>
+                            <span><i class="lg-b"></i> Feed B · UPS-2</span>
+                            <span><i class="lg-n"></i> normally open / no redundancy</span>
+                        </span>
+                        <span class="fold-more">notes</span>
+                    </summary>
+                    <div class="sld-note">
+                        Every live conductor flows. The bus coupler does not &mdash; it is normally open
+                        and interlocked, so the transformers can never be paralleled and the LV fault
+                        level stays near 37&nbsp;kA against an 80&nbsp;kA busbar. Where a reading exists
+                        for the chosen date the conductor takes its loading colour and speeds up the
+                        closer it runs to its rating. Click any item for its ratings, what feeds it and
+                        the day's currents.
+                        <br><br>
+                        Either UPS alone is intended to carry the whole room, so the usable UPS ceiling
+                        is about 450&nbsp;kW rather than 900&nbsp;kW. Transcribed from the
+                        transformer-to-rack block diagram &mdash; single line diagram EI-CC-S/S-001
+                        updated 05-09-26, the server room layout updated 05-09-26, and the LT panel
+                        drawing. Not for construction.
+                        <span id="statRead" hidden></span>
                     </div>
-                    <div class="stat">
-                        <div class="stat-k">Generator backed</div>
-                        <div class="stat-v">2 sections</div>
-                        <div class="stat-s">ATS-001 via GEN-1 · ATS-002 via GEN-2</div>
-                    </div>
-                </div>
+                </details>
 
                 <div class="detail" id="detail" hidden>
                     <div class="d-head">

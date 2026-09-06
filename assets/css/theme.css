@@ -183,6 +183,33 @@ svg.i {
 
 .side-card b { color: var(--text-dim); font-weight: 600; }
 
+/* ---------- docked sidebar ----------
+   Collapses to an icon rail, which gives a wide drawing back about 200px
+   of screen. Navigation stays reachable, so nothing is lost. */
+
+.app.nav-docked .sidebar { width: 58px; flex: 0 0 58px; padding: 18px 8px; }
+.app.nav-docked .brand-badge { margin: 0 auto; }
+.app.nav-docked .brand > div:last-child,
+.app.nav-docked .nav-label,
+.app.nav-docked .side-foot,
+.app.nav-docked .nav .tag,
+.app.nav-docked .nav a > span:not(.tag) { display: none; }
+.app.nav-docked .nav a { justify-content: center; padding: 10px 0; }
+.app.nav-docked .nav a svg.i { margin: 0; }
+
+/* the label text sits as a bare text node, so hide it by size instead */
+.app.nav-docked .nav a { font-size: 0; gap: 0; }
+.app.nav-docked .nav a svg.i { font-size: 14px; }
+
+.dock-btn svg.i { transition: transform .18s; }
+.app.nav-docked .dock-btn svg.i { transform: rotate(180deg); }
+
+@media (max-width: 860px) {
+    .app.nav-docked .sidebar { width: 100%; flex: none; padding: 12px 14px; }
+    .app.nav-docked .nav a { font-size: 13px; }
+    .dock-btn { display: none; }
+}
+
 /* ---------- main ---------- */
 
 .main { flex: 1; min-width: 0; }

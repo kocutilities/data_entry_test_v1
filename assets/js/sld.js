@@ -152,11 +152,11 @@
                              'text-anchor': 'middle' }, g).textContent = n.label;
             } else {
                 var lines = [n.sub, n.sub2, n.sub3].filter(Boolean);
-                var top = n.y - (lines.length * 6);
+                var top = n.y - (lines.length * 7) + 4;
                 el('text', { x: n.x, y: top, class: 'lbl' + (n.small ? ' tiny' : ''),
                              'text-anchor': 'middle' }, g).textContent = n.label;
                 lines.forEach(function (s, i) {
-                    el('text', { x: n.x, y: top + 14 + i * 12, class: 'sub',
+                    el('text', { x: n.x, y: top + 16 + i * 13, class: 'sub',
                                  'text-anchor': 'middle' }, g).textContent = s;
                 });
                 if (n.key) {
@@ -328,6 +328,42 @@
         try { localStorage.setItem(THEME_KEY, t); } catch (e) { /* ignore */ }
     }
 
+    /* ---------------------------------------------------------
+       fitting the drawing to the screen
+       --------------------------------------------------------- */
+
+    var zoom = 1;
+
+    /* Give the drawing every pixel the rest of the page is not using, so at
+       Fit the whole system is on screen without scrolling. */
+    function fit() {
+        var wrap = document.querySelector('.sld-wrap');
+        if (!wrap) return;
+        var top = wrap.getBoundingClientRect().top;
+        var below = 0;
+        var fold = document.querySelector('.fold');
+        if (fold) below += fold.getBoundingClientRect().height + 10;
+        var h = Math.max(320, window.innerHeight - top - below - 34);
+        document.documentElement.style.setProperty('--sld-h', Math.round(h) + 'px');
+    }
+
+    function setZoom(z) {
+        zoom = Math.min(4, Math.max(0.4, z));
+        document.documentElement.style.setProperty('--zoom', zoom.toFixed(3));
+        $('zLevel').textContent = Math.round(zoom * 100) + '%';
+    }
+
+    function applyDock(docked) {
+        document.querySelector('.app').classList.toggle('nav-docked', docked);
+        var b = $('dockBtn');
+        if (b) {
+            b.title = docked ? 'Expand the navigation' : 'Collapse the navigation';
+            b.setAttribute('aria-label', b.title);
+        }
+        try { localStorage.setItem('koc-dc-nav-docked', docked ? '1' : '0'); } catch (e) { /* ignore */ }
+        setTimeout(fit, 220);
+    }
+
     function init() {
         $('sldDate').value = new Date().toISOString().slice(0, 10);
 
@@ -356,6 +392,22 @@
         var saved;
         try { saved = localStorage.getItem(THEME_KEY); } catch (e) { saved = null; }
         applyTheme(saved || 'dark');
+
+        $('dockBtn').addEventListener('click', function () {
+            applyDock(!document.querySelector('.app').classList.contains('nav-docked'));
+        });
+        var dock;
+        try { dock = localStorage.getItem('koc-dc-nav-docked'); } catch (e) { dock = null; }
+        applyDock(dock === '1');
+
+        $('zIn').addEventListener('click', function () { setZoom(zoom * 1.25); });
+        $('zOut').addEventListener('click', function () { setZoom(zoom / 1.25); });
+        $('zFit').addEventListener('click', function () { setZoom(1); fit(); });
+        setZoom(1);
+
+        fit();
+        window.addEventListener('resize', fit);
+        document.querySelector('.fold').addEventListener('toggle', fit);
     }
 
     if (document.readyState === 'loading') {
