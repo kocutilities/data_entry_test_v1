@@ -20,7 +20,9 @@
     var DERATE_KEY = 'koc-dc-feeder-plate';
 
     var $ = function (id) { return document.getElementById(id); };
-    var readings = {};
+    var readings = {};        /* single-day basis */
+    var hist = null;          /* historical basis: {stats, demand, cover, years} */
+    var basis = 'today';      /* 'today' | '1' | '2' | '3' | '4' | '5' (years) */
     var plateBasis = 'frame';
 
     var V = DC_SYSTEM.systemVoltage;
@@ -43,6 +45,61 @@
         var r = readings[key];
         if (!r) return null;
         return Math.max(Number(r.r) || 0, Number(r.y) || 0, Number(r.b) || 0);
+    }
+
+    /* The value a rule is judged against under the active basis.
+
+       On the historical basis this is the WORST condition actually recorded
+       in the period, not the average. A new load has to fit on the day the
+       system was busiest, not on a typical day - an average would sail past
+       the summer peak and approve a load that fails every August. */
+    function basisValue(key) {
+        if (basis === 'today') return maxPhase(key);
+        if (!hist || !hist.stats || !hist.stats[key]) return null;
+        return hist.stats[key].max;
+    }
+
+    function basisStats(key) {
+        if (basis === 'today' || !hist || !hist.stats) return null;
+        return hist.stats[key] || null;
+    }
+
+    /* Site demand under the active basis. On history this is the worst
+       COINCIDENT total - both incomers on the same date - computed by the
+       server, never max(A) + max(B) from different dates. */
+    function basisDemand() {
+        if (basis === 'today') {
+            var a = maxPhase('Main|Incomer A|'), b = maxPhase('Main|Incomer B|');
+            if (a === null || b === null) return null;
+            return { value: a + b, label: 'recorded on ' + $('date').value, when: $('date').value };
+        }
+        if (!hist || !hist.demand) return null;
+        return { value: hist.demand.max, label: 'worst coincident demand in the period',
+                 when: hist.demand.maxDate, stats: hist.demand };
+    }
+
+    /* How well the requested period is actually covered by data. This is the
+       part that must not be glossed over: a five year button pressed against
+       two days of records has to say so, and must stop the page reporting a
+       confident pass. */
+    function coverage() {
+        if (basis === 'today') return { quality: 'today' };
+        if (!hist) return { quality: 'none', dates: 0 };
+        var c = hist.cover || { dates: 0 };
+        var years = Number(basis);
+        var wantDays = Math.round(years * 365.25);
+        var spanDays = 0;
+        if (c.first && c.last) {
+            spanDays = Math.round((new Date(c.last) - new Date(c.first)) / 86400000) + 1;
+        }
+        var q;
+        if (!c.dates) q = 'none';
+        else if (c.dates < 12 || spanDays < wantDays * 0.25) q = 'thin';
+        else if (spanDays < wantDays * 0.8) q = 'partial';
+        else q = 'good';
+        return { quality: q, dates: c.dates, first: c.first, last: c.last,
+                 spanDays: spanDays, wantDays: wantDays, rows: c.rows,
+                 demandDates: hist.demand ? hist.demand.n : 0 };
     }
     function ratingOf(name) {
         var hit = DC_CONFIG.equipment.filter(function (e) { return e.name === name; })[0];
@@ -93,14 +150,17 @@
 
     function ruleTransformer(p) {
         var c = KOC.transformer.doubleRadialFactor;
-        var a = maxPhase('Main|Incomer A|'), b = maxPhase('Main|Incomer B|');
-        if (a === null || b === null) {
+        var d = basisDemand();
+        if (!d) {
             return push({ id: 'A3', title: 'Transformer capacity, contingency case',
                 verdict: 'unknown', clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
                 rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
-                detail: 'Cannot assess — both incomer readings are needed and at least one is missing.' });
+                detail: basis === 'today'
+                    ? 'Cannot assess — both incomer readings are needed and at least one is missing.'
+                    : 'Cannot assess — no date in the period has both incomers recorded, so no '
+                      + 'coincident site demand can be established.' });
         }
-        var mdNow = a + b;
+        var mdNow = d.value;
         var mdNew = mdNow + p.demandAmps;
         var cap = DC_SYSTEM.transformers[0].ratedA;
         var required = c.value * mdNew;
@@ -114,6 +174,9 @@
             rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
             binding: true,
             figures: [
+                ['Maximum Demand basis', basis === 'today'
+                    ? 'reading of ' + d.when
+                    : 'worst in ' + basis + ' year' + (basis === '1' ? '' : 's') + ', on ' + d.when],
                 ['Maximum Demand now', fmt(mdNow) + ' A'],
                 ['Proposed contribution', '+' + fmt(p.demandAmps, 1) + ' A'],
                 ['Maximum Demand after', fmt(mdNew) + ' A  (' + fmt(kvaFromAmps(mdNew)) + ' kVA)'],
@@ -154,7 +217,7 @@
         var g = DC_SYSTEM.generators.filter(function (x) { return x.id === genId; })[0];
         var backed = 0, missing = [];
         g.backs.keys.forEach(function (k) {
-            var m = maxPhase(k);
+            var m = basisValue(k);
             if (m === null) missing.push(k.split('|')[1]); else backed += m;
         });
         if (missing.length) {
@@ -193,7 +256,8 @@
 
         path.forEach(function (key) {
             var name = key.split('|')[1];
-            var now = maxPhase(key);
+            var now = basisValue(key);
+            var st = basisStats(key);
             /* the incomers are judged by A3, not here */
             if (name === 'Incomer A' || name === 'Incomer B') return;
             if (now === null) {
@@ -206,7 +270,8 @@
             var state = pct === null ? 'norating' : pct > 100 ? 'fail' : pct > 87 ? 'watch' : 'pass';
             if (state === 'fail') anyFail = true;
             if (state === 'norating') anyUnknown = true;
-            rows.push({ name: name, now: now, after: after, cont: cont, pct: pct, state: state });
+            rows.push({ name: name, now: now, after: after, cont: cont, pct: pct,
+                        state: state, st: st });
         });
 
         return push({
@@ -238,7 +303,7 @@
         var loads = DC_SYSTEM.ups.map(function (u) {
             var sum = 0, miss = false;
             u.feeds.forEach(function (k) {
-                var m = maxPhase(k);
+                var m = basisValue(k);
                 if (m === null) miss = true; else sum += m;
             });
             return { id: u.id, kva: u.kva, ratedA: ampsFromKva(u.kva), amps: sum, missing: miss };
@@ -304,9 +369,9 @@
 
     function ruleUpstreamMew(p) {
         var c = KOC.upstream.mewFeederLimit;
-        var a = maxPhase('Main|Incomer A|'), b = maxPhase('Main|Incomer B|');
-        if (a === null || b === null) return null;
-        var mw = kvaFromAmps(a + b + p.demandAmps) * p.pf / 1000;
+        var d = basisDemand();
+        if (!d) return null;
+        var mw = kvaFromAmps(d.value + p.demandAmps) * p.pf / 1000;
         var pass = mw <= c.value;
         return push({
             id: 'A8', title: 'Upstream MEW feeder',
@@ -382,6 +447,80 @@
         return c;
     }
 
+    var COVER_TEXT = {
+        good:    ['Period well covered',
+                  'The records span the requested period, so the worst recorded condition is a '
+                  + 'meaningful peak.'],
+        partial: ['Period only partly covered',
+                  'The records cover part of the requested period. The worst condition found is '
+                  + 'real, but an earlier peak outside the recorded span would not appear here.'],
+        thin:    ['Not enough history to judge',
+                  'There are too few readings, or they span too short a time, for a worst-case to '
+                  + 'mean anything. A peak that has not been recorded cannot be found.'],
+        none:    ['No history in this period',
+                  'Nothing was recorded in the requested period.']
+    };
+
+    function renderCoverage() {
+        var host = $('coverage');
+        var tbl = $('histTable');
+        host.innerHTML = ''; tbl.innerHTML = '';
+
+        if (basis === 'today') {
+            $('coverSection').hidden = true;
+            return;
+        }
+        $('coverSection').hidden = false;
+
+        var c = coverage();
+        var t = COVER_TEXT[c.quality] || COVER_TEXT.none;
+        var b = el('div', 'cover-banner ' + c.quality);
+        b.appendChild(el('b', '', t[0]));
+
+        var line = t[1];
+        if (c.dates) {
+            line += '  Found ' + c.dates + ' reading date' + (c.dates === 1 ? '' : 's')
+                  + ' between ' + c.first + ' and ' + c.last + ' — a span of ' + c.spanDays
+                  + ' day' + (c.spanDays === 1 ? '' : 's') + ' against the ' + c.wantDays
+                  + ' days requested. ' + c.rows + ' readings in total, of which '
+                  + c.demandDates + ' date' + (c.demandDates === 1 ? '' : 's')
+                  + ' had both incomers recorded, which is what a site demand needs.';
+        }
+        b.appendChild(el('span', '', line));
+        host.appendChild(b);
+
+        if (!hist || !hist.stats || !Object.keys(hist.stats).length) return;
+
+        /* the main equipment, worst first */
+        var rows = [];
+        DC_CONFIG.equipment.forEach(function (e) {
+            var st = hist.stats['Main|' + e.name + '|'];
+            if (!st) return;
+            var cont = continuousOf(e.name);
+            rows.push({ name: e.name, st: st, cont: cont,
+                        pct: cont ? st.max / cont * 100 : null });
+        });
+        rows.sort(function (x, y) { return (y.pct || 0) - (x.pct || 0); });
+
+        var head = el('div', 'hrow hhead');
+        ['Equipment', 'Max', 'p95', 'Median', 'Mean', 'Min', 'Max was'].forEach(function (h) {
+            head.appendChild(el('span', '', h));
+        });
+        tbl.appendChild(head);
+
+        rows.forEach(function (r) {
+            var row = el('div', 'hrow');
+            row.appendChild(el('span', 'fname', r.name));
+            row.appendChild(el('span', 'hnum hmax', fmt(r.st.max, 1)));
+            row.appendChild(el('span', 'hnum', fmt(r.st.p95, 1)));
+            row.appendChild(el('span', 'hnum', fmt(r.st.med, 1)));
+            row.appendChild(el('span', 'hnum', fmt(r.st.avg, 1)));
+            row.appendChild(el('span', 'hnum', fmt(r.st.min, 1)));
+            row.appendChild(el('span', 'fmuted', r.st.maxDate + '  (' + r.st.n + ')'));
+            tbl.appendChild(row);
+        });
+    }
+
     function run() {
         var p = proposal();
         var host = $('results');
@@ -411,6 +550,8 @@
             sm.appendChild(d);
         });
 
+        renderCoverage();
+
         ruleTransformer(p);
         ruleGenerator(p);
         ruleUpstream(p);
@@ -428,6 +569,29 @@
         var v = $('verdict');
         v.innerHTML = '';
         var kind, title, sub;
+        var cov = coverage();
+
+        /* Thin history cannot produce a confident pass. A failure found even
+           in thin data is still a failure - you cannot un-see an overload -
+           but an absence of failures proves nothing when there is almost
+           nothing to look at. */
+        if (!fails.length && (cov.quality === 'thin' || cov.quality === 'none')) {
+            v.className = 'verdict bad';
+            v.appendChild(el('div', 'verdict-title', 'Cannot assess on this basis'));
+            v.appendChild(el('div', 'verdict-sub',
+                (cov.quality === 'none'
+                    ? 'Nothing is recorded in the requested period, '
+                    : 'Only ' + cov.dates + ' reading date' + (cov.dates === 1 ? '' : 's')
+                      + ' spanning ' + cov.spanDays + ' day' + (cov.spanDays === 1 ? '' : 's')
+                      + ' exist against the ' + cov.wantDays + ' days requested, ')
+                + 'so no worst-case loading can be established. The rules below computed '
+                + 'without failure, but that is a statement about the data, not about the '
+                + 'system. Either assess on a single day and treat it as provisional, or '
+                + 'build the record up over time.'));
+            renderOutstanding();
+            return;
+        }
+
         if (fails.length) {
             kind = 'bad'; title = 'Reject';
             sub = fails.length + ' rule' + (fails.length === 1 ? '' : 's') + ' failed — '
@@ -447,7 +611,10 @@
         v.appendChild(el('div', 'verdict-title', title));
         v.appendChild(el('div', 'verdict-sub', sub));
 
-        /* what remains outstanding regardless of the verdict */
+        renderOutstanding();
+    }
+
+    function renderOutstanding() {
         var os = $('outstanding');
         os.innerHTML = '';
         [['Cable capacity, derated', 'KOC-E-008 cl. 8.3.2 — 50 °C in air, 40 °C buried, grouping and installation method'],
@@ -463,6 +630,19 @@
             row.appendChild(el('span', 'rule-clause', x[1]));
             os.appendChild(row);
         });
+
+        if (basis !== 'today') {
+            var c = coverage();
+            if (c.quality === 'partial' || c.quality === 'good') {
+                var row = el('div', 'narow');
+                row.appendChild(el('b', '', 'Confirm the period covers a summer peak'));
+                row.appendChild(el('span', 'rule-clause',
+                    'Kuwait ambient drives the annual maximum. ' + c.dates
+                    + ' reading dates from ' + c.first + ' to ' + c.last
+                    + ' — check that at least one July or August is inside that span.'));
+                os.appendChild(row);
+            }
+        }
     }
 
     /* ---------------------------------------------------------
@@ -476,6 +656,38 @@
         b.appendChild(el('span', '', msg));
     }
 
+    function yearsAgo(n) {
+        var d = new Date($('date').value || new Date().toISOString().slice(0, 10));
+        d.setFullYear(d.getFullYear() - n);
+        return d.toISOString().slice(0, 10);
+    }
+
+    function loadHistory() {
+        hist = null;
+        var to = $('date').value;
+        var from = yearsAgo(Number(basis));
+        setBadge('Reading ' + basis + ' year' + (basis === '1' ? '' : 's')
+               + ' of history…', true);
+        return fetch(endpointUrl(), {
+            method: 'POST', body: JSON.stringify({ type: 'history', from: from, to: to })
+        })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function (d) {
+                if (!d || d.result !== 'success') throw new Error((d && d.message) || 'Unexpected response');
+                hist = d;
+                var c = d.cover || {};
+                setBadge((c.rows || 0) + ' readings on ' + (c.dates || 0) + ' date'
+                       + (c.dates === 1 ? '' : 's') + ' between ' + from + ' and ' + to);
+                run();
+            })
+            .catch(function (e) {
+                console.error('History load failed:', e);
+                setBadge('Could not read history (' + e.message + '). If the sheet was set up '
+                       + 'before this feature, Code.gs needs redeploying as a New version.');
+                run();
+            });
+    }
+
     function load() {
         var date = $('date').value;
         readings = {};
@@ -484,6 +696,7 @@
             run();
             return Promise.resolve();
         }
+        if (basis !== 'today') return loadHistory();
         setBadge('Reading the sheet…', true);
         return fetch(endpointUrl(), {
             method: 'POST', body: JSON.stringify({ type: 'status', date: date })
@@ -526,6 +739,11 @@
         });
         $('date').addEventListener('change', load);
         $('refresh').addEventListener('click', load);
+        $('basis').addEventListener('change', function () {
+            basis = $('basis').value;
+            $('dateLabel').textContent = basis === 'today' ? 'on' : 'counting back from';
+            load();
+        });
 
         $('themeBtn').addEventListener('click', function () {
             var t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';

@@ -57,6 +57,7 @@ function doPost(e) {
     var payload = JSON.parse(e.postData.contents);
 
     if (payload.type === 'status') return handleStatus(payload);
+    if (payload.type === 'history') return handleHistory(payload);
     return handleSubmit(payload);
 
   } catch (err) {
@@ -93,6 +94,147 @@ function handleStatus(payload) {
   }
 
   return json({ result: 'success', date: date, recorded: recorded });
+}
+
+
+/* =========================================================================
+   history - how the system has actually loaded over a period
+
+   A single day's reading can miss the annual peak entirely, so an
+   additional-load study has to be judged against the worst condition
+   actually recorded, not against whatever today happened to be.
+
+   Returns, for a date range:
+     stats   per feeder - max, min, mean, median, count, and the DATE the
+             maximum was recorded, so a peak can be traced back
+     demand  the site demand, computed as the COINCIDENT sum of the two
+             incomers on the same date. Taking max(A) + max(B) across
+             different dates would invent a peak that never happened.
+     cover   what the range really holds: first and last date found and
+             how many distinct reading dates. The client needs this to say
+             whether the requested period is actually covered.
+   ========================================================================= */
+
+function handleHistory(payload) {
+  var from = normaliseDate(payload.from || '');
+  var to = normaliseDate(payload.to || '');
+  if (!from || !to) return json({ result: 'error', message: 'from and to dates are required' });
+
+  var sheet = getSheet();
+  var last = sheet.getLastRow();
+  if (last < 2) {
+    return json({ result: 'success', from: from, to: to,
+                  cover: { dates: 0, first: null, last: null, rows: 0 },
+                  stats: {}, demand: null });
+  }
+
+  var width = C_B - C_DATE + 1;
+  var data = sheet.getRange(2, C_DATE, last - 1, width).getValues();
+
+  var vals = {};          /* key -> [ {v, d} ] */
+  var perDate = {};       /* date -> { 'Incomer A': v, 'Incomer B': v } */
+  var seenDates = {};
+  var rows = 0, first = null, lastSeen = null;
+
+  for (var i = 0; i < data.length; i++) {
+    var row = data[i];
+    var d = normaliseDate(row[0]);
+    if (!d || d < from || d > to) continue;
+
+    rows++;
+    seenDates[d] = true;
+    if (!first || d < first) first = d;
+    if (!lastSeen || d > lastSeen) lastSeen = d;
+
+    var key = rowKey(row[C_CATEGORY - C_DATE],
+                     row[C_EQUIPMENT - C_DATE],
+                     row[C_CIRCUIT - C_DATE]);
+
+    var r = Number(row[C_R - C_DATE]) || 0;
+    var y = Number(row[C_Y - C_DATE]) || 0;
+    var b = Number(row[C_B - C_DATE]) || 0;
+    var v = Math.max(r, y, b);
+
+    if (!vals[key]) vals[key] = [];
+    vals[key].push({ v: v, d: d });
+
+    var eq = String(row[C_EQUIPMENT - C_DATE]).trim();
+    if (eq === 'Incomer A' || eq === 'Incomer B') {
+      if (!perDate[d]) perDate[d] = {};
+      /* if a feeder was recorded twice on a date, keep the higher */
+      if (perDate[d][eq] === undefined || v > perDate[d][eq]) perDate[d][eq] = v;
+    }
+  }
+
+  /* per feeder statistics */
+  var stats = {};
+  for (var k in vals) {
+    var arr = vals[k];
+    var nums = arr.map(function (x) { return x.v; }).sort(function (a, b) { return a - b; });
+    var sum = 0;
+    for (var j = 0; j < nums.length; j++) sum += nums[j];
+    var top = arr[0];
+    for (var m = 1; m < arr.length; m++) if (arr[m].v > top.v) top = arr[m];
+
+    stats[k] = {
+      n: nums.length,
+      min: nums[0],
+      max: nums[nums.length - 1],
+      avg: sum / nums.length,
+      med: median(nums),
+      p95: percentile(nums, 0.95),
+      maxDate: top.d
+    };
+  }
+
+  /* coincident site demand, per date */
+  var demand = null;
+  var dd = [];
+  for (var dt in perDate) {
+    var e = perDate[dt];
+    /* only count a date where BOTH incomers were read, otherwise the
+       total is not the site demand */
+    if (e['Incomer A'] === undefined || e['Incomer B'] === undefined) continue;
+    dd.push({ d: dt, v: e['Incomer A'] + e['Incomer B'] });
+  }
+  if (dd.length) {
+    var dv = dd.map(function (x) { return x.v; }).sort(function (a, b) { return a - b; });
+    var dsum = 0;
+    for (var q = 0; q < dv.length; q++) dsum += dv[q];
+    var dtop = dd[0];
+    for (var w = 1; w < dd.length; w++) if (dd[w].v > dtop.v) dtop = dd[w];
+    demand = {
+      n: dv.length, min: dv[0], max: dv[dv.length - 1],
+      avg: dsum / dv.length, med: median(dv), p95: percentile(dv, 0.95),
+      maxDate: dtop.d,
+      bothIncomersDates: dv.length
+    };
+  }
+
+  var nDates = 0;
+  for (var s2 in seenDates) nDates++;
+
+  return json({
+    result: 'success', from: from, to: to,
+    cover: { dates: nDates, first: first, last: lastSeen, rows: rows },
+    stats: stats, demand: demand
+  });
+}
+
+
+function median(sorted) {
+  if (!sorted.length) return null;
+  var mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+
+function percentile(sorted, p) {
+  if (!sorted.length) return null;
+  var idx = Math.ceil(p * sorted.length) - 1;
+  if (idx < 0) idx = 0;
+  if (idx >= sorted.length) idx = sorted.length - 1;
+  return sorted[idx];
 }
 
 
