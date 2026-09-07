@@ -123,6 +123,12 @@
         var hit = DC_CONFIG.equipment.filter(function (e) { return e.name === name; })[0];
         return hit ? hit.rated : null;
     }
+    /* Where the rating came from, e.g. "ATS-002 way L6" - so a rating in the
+       table can be traced back to a device on the drawing. */
+    function sourceOf(name) {
+        var hit = DC_CONFIG.equipment.filter(function (e) { return e.name === name; })[0];
+        return hit && hit.source ? hit.source : '';
+    }
     function continuousOf(name) {
         var p = ratingOf(name);
         if (!p) return null;
@@ -400,7 +406,8 @@
             if (state === 'fail') anyFail = true;
             if (state === 'norating') anyUnknown = true;
             rows.push({ name: name, now: now, after: after, cont: cont, pct: pct,
-                        state: state, st: st });
+                        state: state, st: st,
+                        plate: ratingOf(name), src: sourceOf(name) });
         });
 
         return push({
@@ -564,7 +571,7 @@
         if (r.rows) {
             var t = el('div', 'ftable');
             var head = el('div', 'frow fhead');
-            ['Feeder', 'Now', 'After', 'Continuous', '%', ''].forEach(function (x) {
+            ['Feeder', 'Protective device', 'Now', 'After', 'Continuous', '%', ''].forEach(function (x) {
                 head.appendChild(el('span', '', x));
             });
             t.appendChild(head);
@@ -576,9 +583,17 @@
                     s.style.gridColumn = '2 / -1';
                     row.appendChild(s);
                 } else {
+                    /* Show the device the rating came from. Without it the
+                       Continuous column reads as an unexplained number and
+                       the breaker on the drawing looks absent from the
+                       study - 32 A is a derated 40 A MCCB, not a 32 A one. */
+                    row.appendChild(el('span', 'fmuted',
+                        x.plate ? fmt(x.plate) + ' A' + (x.src ? '  ' + x.src : '') : '—'));
                     row.appendChild(el('span', '', fmt(x.now, 1) + ' A'));
                     row.appendChild(el('span', '', fmt(x.after, 1) + ' A'));
-                    row.appendChild(el('span', 'fmuted', x.cont ? fmt(x.cont) + ' A' : '—'));
+                    row.appendChild(el('span', 'fmuted', x.cont
+                        ? fmt(x.cont) + ' A' + (plateBasis === 'frame' && x.plate ? '  (×0.8)' : '')
+                        : '—'));
                     row.appendChild(el('span', 'fpct', x.pct === null ? '—' : fmt(x.pct) + ' %'));
                     row.appendChild(el('span', 'fstate',
                         x.state === 'fail' ? 'over rating' : x.state === 'watch' ? 'above 87 %' : ''));
