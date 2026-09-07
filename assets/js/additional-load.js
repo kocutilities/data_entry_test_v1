@@ -102,6 +102,23 @@
                  spanDays: spanDays, wantDays: wantDays, rows: c.rows,
                  demandDates: hist.demand ? hist.demand.n : 0 };
     }
+    /* Why a historical figure is missing. "The sheet holds nothing for this
+       item" and "we never got an answer from the sheet" are different
+       claims, and only the first says anything about the site. Reporting a
+       failed request as an absence of readings would be a statement the
+       page is in no position to make. */
+    function histGap(what) {
+        if (basis === 'today') {
+            return what + ' was not recorded on ' + $('date').value + '.';
+        }
+        if (histError) {
+            return 'the history was never retrieved \u2014 the sheet returned "' + histError
+                 + '". Nothing is implied about ' + what + '; those readings may well exist.';
+        }
+        return what + ' has no reading in the ' + basis + ' year'
+             + (basis === '1' ? '' : 's') + ' to ' + $('date').value + '.';
+    }
+
     function ratingOf(name) {
         var hit = DC_CONFIG.equipment.filter(function (e) { return e.name === name; })[0];
         return hit ? hit.rated : null;
@@ -185,9 +202,7 @@
         var st = basisStats(key);
         if (now === null) {
             return push(Object.assign({}, base, { verdict: 'unknown',
-                detail: basis === 'today'
-                    ? 'Cannot assess — ' + name + ' was not recorded on ' + $('date').value + '.'
-                    : 'Cannot assess — ' + name + ' has no reading in the selected period.' }));
+                detail: 'Cannot assess — ' + histGap(name) }));
         }
 
         /* A feeder carries the real current, not the diversified demand
@@ -266,10 +281,13 @@
             return push({ id: 'A3', title: 'Transformer capacity, contingency case',
                 verdict: 'unknown', clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
                 rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
-                detail: basis === 'today'
-                    ? 'Cannot assess — both incomer readings are needed and at least one is missing.'
-                    : 'Cannot assess — no date in the period has both incomers recorded, so no '
-                      + 'coincident site demand can be established.' });
+                detail: histError
+                    ? 'Cannot assess — ' + histGap('the incomers')
+                    : basis === 'today'
+                        ? 'Cannot assess — both incomer readings are needed and at least one is missing.'
+                        : 'Cannot assess — no date in the ' + basis + ' year'
+                          + (basis === '1' ? '' : 's') + ' to ' + $('date').value + ' has both '
+                          + 'incomers recorded, so no coincident site demand can be established.' });
         }
         var mdNow = d.value;
         var mdNew = mdNow + p.demandAmps;
@@ -335,7 +353,7 @@
             return push({ id: 'A4', title: g.id + ' capacity',
                 verdict: 'unknown', clause: 'KOC-E-003 Pt 1 Rev 4 cl. 13.2.3 / 13.3.2',
                 rule: 'Continuously rated for Maximum Demand + 15 %',
-                detail: 'Cannot assess — no reading for ' + missing.join(', ') + '.' });
+                detail: 'Cannot assess — ' + histGap(missing.join(', ')) });
         }
         var after = backed + p.demandAmps;
         var required = 1.15 * after;
@@ -583,6 +601,16 @@
         }
         $('coverSection').hidden = false;
 
+        if (histError) {
+            var eb = el('div', 'cover-banner thin');
+            eb.appendChild(el('b', '', 'History could not be retrieved'));
+            eb.appendChild(el('span', '', 'The sheet returned "' + histError + '", so this panel '
+                + 'is empty because the request failed — not because the period is empty. '
+                + 'Redeploy Code.gs as a New version, then try again.'));
+            host.appendChild(eb);
+            return;
+        }
+
         var c = coverage();
         var t = COVER_TEXT[c.quality] || COVER_TEXT.none;
         var b = el('div', 'cover-banner ' + c.quality);
@@ -690,6 +718,15 @@
            replaced by a refusal. */
         var assessed = out.filter(function (r) { return r && r.verdict !== 'unknown'; });
 
+        /* A7 judges the stated power factor of the proposal itself and needs
+           no measurement, so it can pass on a site with no readings at all.
+           An acceptance resting on nothing else would be an acceptance that
+           no capacity was ever checked. */
+        var INPUT_ONLY = ['A7'];
+        var measured = assessed.filter(function (r) {
+            return INPUT_ONLY.indexOf(r.id) < 0;
+        });
+
         if (basis !== 'today' && histError) {
             /* Not the same thing as an empty period: the request itself did
                not complete, so nothing here has been tested against history
@@ -714,11 +751,15 @@
             sub = fails.length + ' rule' + (fails.length === 1 ? '' : 's') + ' failed — '
                 + fails.map(function (r) { return r.id; }).join(', ')
                 + '. ' + fails[0].detail;
-        } else if (!assessed.length) {
-            kind = 'warn'; title = 'Nothing could be assessed';
-            sub = 'No equipment on the supply path has a reading in this period, so no rule '
-                + 'could be computed at all. Choose a different basis, or record the '
-                + 'currents first.';
+        } else if (!measured.length) {
+            kind = 'warn'; title = 'No capacity check was possible';
+            sub = 'Nothing on the supply path has a reading in this period, so not one capacity '
+                + 'rule could be computed'
+                + (assessed.length ? ' — only ' + assessed.map(function (r) { return r.id; }).join(', ')
+                    + ', which judge' + (assessed.length === 1 ? 's' : '') + ' the proposal itself '
+                    + 'rather than the system carrying it' : '')
+                + '. This is not an acceptance. Choose a different basis, or record the currents '
+                + 'first.';
         } else if (unknowns.length) {
             kind = 'warn'; title = 'Accept on the parameters assessed';
             sub = assessed.length + ' of ' + out.length + ' rules were testable and all pass'
@@ -788,7 +829,9 @@
                      : r.verdict === 'watch' ? 'Acceptable with a caution' : 'Acceptable';
             return word + ' \u2014 ' + r.detail;
         });
-        block('Not assessed \u2014 no data', didnt, 'no', '\u2014', function (r) {
+        block(histError ? 'Not assessed \u2014 history not retrieved'
+                        : 'Not assessed \u2014 no data',
+              didnt, 'no', '\u2014', function (r) {
             return r.detail;
         });
 
