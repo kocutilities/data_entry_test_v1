@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Load Study">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=903252b4">
+<link rel="stylesheet" href="assets/css/theme.css?v=6769d838">
 <style>
 .verdict { border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
            border: 1px solid var(--border-strong); background: var(--surface-2); }
@@ -90,6 +90,19 @@
 .hmax { font-weight: 650; }
 
 @media (max-width: 1000px) { .hrow { grid-template-columns: 1fr 1fr 1fr; } .hrow.hhead { display:none; } }
+
+.scope-row { display: grid; grid-template-columns: 26px minmax(150px,1fr) 2.2fr; gap: 10px;
+             align-items: start; padding: 8px 12px; border-radius: 9px;
+             background: var(--surface-2); margin-bottom: 4px; font-size: 12.8px; }
+.scope-row .mark { font-weight: 700; text-align: center; }
+.scope-row.yes .mark { color: var(--good); }
+.scope-row.no  .mark { color: var(--text-faint); }
+.scope-row.no  { opacity: .78; }
+.scope-row b { font-weight: 620; }
+.scope-row span.why { color: var(--text-dim); line-height: 1.5; }
+.scope-head { font-size: 10.4px; letter-spacing: .1em; text-transform: uppercase;
+              color: var(--text-faint); margin: 12px 0 6px; }
+.scope-head:first-child { margin-top: 0; }
 
 .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
 
@@ -253,7 +266,16 @@
             <section class="section">
                 <div class="section-head"><h2>Verdict</h2></div>
                 <div class="verdict" id="verdict"></div>
+                <div id="scopeNote"></div>
                 <div id="results"></div>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>Scope of this assessment</h2>
+                    <span class="hint">what the data supported, and what it did not</span>
+                </div>
+                <div id="assessedList"></div>
             </section>
 
             <section class="section">
@@ -274,9 +296,9 @@
     </main>
 </div>
 
-<script src="assets/js/config.js?v=903252b4"></script>
-<script src="assets/js/koc-criteria.js?v=903252b4"></script>
-<script src="assets/js/system-model.js?v=903252b4"></script>
-<script src="assets/js/additional-load.js?v=903252b4"></script>
+<script src="assets/js/config.js?v=6769d838"></script>
+<script src="assets/js/koc-criteria.js?v=6769d838"></script>
+<script src="assets/js/system-model.js?v=6769d838"></script>
+<script src="assets/js/additional-load.js?v=6769d838"></script>
 </body>
 </html>

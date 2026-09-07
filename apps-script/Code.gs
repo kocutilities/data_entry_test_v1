@@ -155,14 +155,18 @@ function handleHistory(payload) {
     var b = Number(row[C_B - C_DATE]) || 0;
     var v = Math.max(r, y, b);
 
+    var ph = (v === r) ? 'R' : (v === y) ? 'Y' : 'B';
     if (!vals[key]) vals[key] = [];
-    vals[key].push({ v: v, d: d });
+    vals[key].push({ v: v, d: d, ph: ph });
 
     var eq = String(row[C_EQUIPMENT - C_DATE]).trim();
     if (eq === 'Incomer A' || eq === 'Incomer B') {
       if (!perDate[d]) perDate[d] = {};
-      /* if a feeder was recorded twice on a date, keep the higher */
-      if (perDate[d][eq] === undefined || v > perDate[d][eq]) perDate[d][eq] = v;
+      /* keep each phase separately: the transformer carries the sum of the
+         two incomers PHASE BY PHASE, and summing the two maxima instead
+         would invent a current that no conductor ever saw */
+      var cur = perDate[d][eq] || { r: 0, y: 0, b: 0 };
+      perDate[d][eq] = { r: Math.max(cur.r, r), y: Math.max(cur.y, y), b: Math.max(cur.b, b) };
     }
   }
 
@@ -183,7 +187,8 @@ function handleHistory(payload) {
       avg: sum / nums.length,
       med: median(nums),
       p95: percentile(nums, 0.95),
-      maxDate: top.d
+      maxDate: top.d,
+      maxPhase: top.ph
     };
   }
 
@@ -195,7 +200,11 @@ function handleHistory(payload) {
     /* only count a date where BOTH incomers were read, otherwise the
        total is not the site demand */
     if (e['Incomer A'] === undefined || e['Incomer B'] === undefined) continue;
-    dd.push({ d: dt, v: e['Incomer A'] + e['Incomer B'] });
+    var a = e['Incomer A'], b2 = e['Incomer B'];
+    var sr = a.r + b2.r, sy = a.y + b2.y, sb = a.b + b2.b;
+    var sv = Math.max(sr, sy, sb);
+    dd.push({ d: dt, v: sv, ph: (sv === sr) ? 'R' : (sv === sy) ? 'Y' : 'B',
+              a: Math.max(a.r, a.y, a.b), b: Math.max(b2.r, b2.y, b2.b) });
   }
   if (dd.length) {
     var dv = dd.map(function (x) { return x.v; }).sort(function (a, b) { return a - b; });
@@ -207,6 +216,9 @@ function handleHistory(payload) {
       n: dv.length, min: dv[0], max: dv[dv.length - 1],
       avg: dsum / dv.length, med: median(dv), p95: percentile(dv, 0.95),
       maxDate: dtop.d,
+      maxPhase: dtop.ph,
+      aAtMax: dtop.a,
+      bAtMax: dtop.b,
       bothIncomersDates: dv.length
     };
   }

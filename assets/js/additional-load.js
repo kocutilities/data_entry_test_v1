@@ -22,6 +22,7 @@
     var $ = function (id) { return document.getElementById(id); };
     var readings = {};        /* single-day basis */
     var hist = null;          /* historical basis: {stats, demand, cover, years} */
+    var histError = null;     /* set when the history request itself fails */
     var basis = 'today';      /* 'today' | '1' | '2' | '3' | '4' | '5' (years) */
     var plateBasis = 'frame';
 
@@ -147,6 +148,116 @@
 
     var out = [];
     function push(o) { out.push(o); return o; }
+
+    /* The incomer that ultimately carries a load connected at this point.
+       The upstream path is built nearest-first and always terminates at an
+       incomer, so the last matching entry is the one. */
+    function incomerFor(point) {
+        var path = DC_SYSTEM.upstream[point] || [];
+        for (var i = path.length - 1; i >= 0; i--) {
+            var n = path[i].split('|')[1];
+            if (n === 'Incomer A' || n === 'Incomer B') return n;
+        }
+        return null;
+    }
+
+    /* A2 - the incomer test.
+
+       This is deliberately self-sufficient. It needs nothing but the
+       incomer's own recorded maximum, so it still returns a real answer on a
+       site where the incomers are the only equipment with a history. */
+    function ruleIncomer(p) {
+        var name = incomerFor(p.point);
+        var sp = KOC.spareCapacity;
+        var base = {
+            id: 'A2', title: 'Incomer capacity against the recorded maximum',
+            clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + sp.clause + '; cl. 11.2.2',
+            rule: 'Incomer current after the addition ≤ its continuous rating, '
+                + 'retaining ' + Math.round(sp.value * 100) + ' % spare'
+        };
+        if (!name) {
+            return push(Object.assign({}, base, { verdict: 'unknown',
+                detail: 'Cannot assess — no upstream path is recorded for ' + p.point + '.' }));
+        }
+
+        var key = 'Main|' + name + '|';
+        var now = basisValue(key);
+        var st = basisStats(key);
+        if (now === null) {
+            return push(Object.assign({}, base, { verdict: 'unknown',
+                detail: basis === 'today'
+                    ? 'Cannot assess — ' + name + ' was not recorded on ' + $('date').value + '.'
+                    : 'Cannot assess — ' + name + ' has no reading in the selected period.' }));
+        }
+
+        /* A feeder carries the real current, not the diversified demand
+           figure: diversity describes a group of loads, not a conductor. */
+        var after = now + p.amps;
+
+        /* The capability here is the transformer full load current, 2133 A at
+           433 V, which is what the rest of the page judges the incomers
+           against. It is NOT passed through continuousOf(): that applies the
+           0.8 ambient derating meant for cables and switchgear frame sizes,
+           and a transformer specified for the site ambient must not be
+           derated a second time. The ACB frame rating, which could be lower,
+           is not on record - it is listed as an outstanding check. */
+        var tr = DC_SYSTEM.transformers.filter(function (t) {
+            return t.incomer === key;
+        })[0];
+        var cont = tr ? tr.ratedA : (ratingOf(name) || 2133);
+        var planning = cont / (1 + sp.value);    /* the level that keeps 15 % spare */
+        var spareToRating = cont - after;
+        var spareToPlanning = planning - after;
+
+        var state = after > cont ? 'fail' : after > planning ? 'watch' : 'pass';
+        var maxAdd = Math.max(0, planning - now);
+
+        var reason;
+        if (state === 'fail') {
+            reason = 'Not acceptable — ' + name + ' would reach ' + fmt(after, 1) + ' A against a '
+                   + 'continuous rating of ' + fmt(cont) + ' A, an overload of '
+                   + fmt(after - cont, 1) + ' A. The rating is a thermal limit, not a target, '
+                   + 'so no part of this load can be added at this point without reinforcement.';
+        } else if (state === 'watch') {
+            reason = 'Acceptable on rating, but not on spare capacity — ' + name + ' would reach '
+                   + fmt(after, 1) + ' A. That is inside the ' + fmt(cont) + ' A rating, but above '
+                   + 'the ' + fmt(planning) + ' A level that keeps the ' + Math.round(sp.value * 100)
+                   + ' % spare required by cl. ' + sp.clause + '. Adding it consumes the margin the '
+                   + 'standard reserves for future growth. The most that can be added while keeping '
+                   + 'that margin is ' + fmt(maxAdd, 1) + ' A.';
+        } else {
+            reason = 'Acceptable — ' + name + ' would reach ' + fmt(after, 1) + ' A, leaving '
+                   + fmt(spareToRating, 1) + ' A to the ' + fmt(cont) + ' A rating and '
+                   + fmt(spareToPlanning, 1) + ' A still in hand above the '
+                   + Math.round(sp.value * 100) + ' % spare level.';
+        }
+
+        var figures = [
+            ['Incomer carrying the load', name],
+            ['Basis', basis === 'today'
+                ? 'reading of ' + $('date').value
+                : 'highest recorded in ' + basis + ' year' + (basis === '1' ? '' : 's')],
+            ['Highest recorded current', fmt(now, 1) + ' A'
+                + (st ? '  on ' + st.maxDate + (st.maxPhase ? ', ' + st.maxPhase + ' phase' : '') : '')],
+            ['Proposed load', '+' + fmt(p.amps, 1) + ' A'],
+            ['Current after addition', fmt(after, 1) + ' A'],
+            ['Continuous capability', fmt(cont) + ' A   (transformer FLC at 433 V)'],
+            ['Utilisation after', fmt(after / cont * 100, 1) + ' %'],
+            ['Spare to rating', fmt(spareToRating, 1) + ' A'],
+            ['Spare to the ' + Math.round(sp.value * 100) + ' % level', fmt(spareToPlanning, 1) + ' A'],
+            ['Status', state === 'fail' ? 'NOT ACCEPTABLE' : 'ACCEPTABLE']
+        ];
+        if (st) {
+            figures.push(['Recorded range in period',
+                fmt(st.min, 1) + ' – ' + fmt(st.max, 1) + ' A   mean ' + fmt(st.avg, 1)
+                + '   median ' + fmt(st.med, 1) + '   from ' + st.n + ' readings']);
+        }
+
+        return push(Object.assign({}, base, {
+            verdict: state, binding: true, figures: figures, detail: reason,
+            headroomAfter: spareToPlanning
+        }));
+    }
 
     function ruleTransformer(p) {
         var c = KOC.transformer.doubleRadialFactor;
@@ -552,6 +663,7 @@
 
         renderCoverage();
 
+        ruleIncomer(p);
         ruleTransformer(p);
         ruleGenerator(p);
         ruleUpstream(p);
@@ -571,23 +683,28 @@
         var kind, title, sub;
         var cov = coverage();
 
-        /* Thin history cannot produce a confident pass. A failure found even
-           in thin data is still a failure - you cannot un-see an overload -
-           but an absence of failures proves nothing when there is almost
-           nothing to look at. */
-        if (!fails.length && (cov.quality === 'thin' || cov.quality === 'none')) {
-            v.className = 'verdict bad';
-            v.appendChild(el('div', 'verdict-title', 'Cannot assess on this basis'));
-            v.appendChild(el('div', 'verdict-sub',
-                (cov.quality === 'none'
-                    ? 'Nothing is recorded in the requested period, '
-                    : 'Only ' + cov.dates + ' reading date' + (cov.dates === 1 ? '' : 's')
-                      + ' spanning ' + cov.spanDays + ' day' + (cov.spanDays === 1 ? '' : 's')
-                      + ' exist against the ' + cov.wantDays + ' days requested, ')
-                + 'so no worst-case loading can be established. The rules below computed '
-                + 'without failure, but that is a statement about the data, not about the '
-                + 'system. Either assess on a single day and treat it as provisional, or '
-                + 'build the record up over time.'));
+        /* A missing history for one item is not a reason to withhold the
+           answer for every other item. Anything the data DOES support is
+           assessed and stated plainly; anything it does not is named, and
+           the verdict is qualified by exactly that list rather than
+           replaced by a refusal. */
+        var assessed = out.filter(function (r) { return r && r.verdict !== 'unknown'; });
+
+        if (basis !== 'today' && histError) {
+            /* Not the same thing as an empty period: the request itself did
+               not complete, so nothing here has been tested against history
+               at all and no acceptance may be implied from it. */
+            kind = 'warn'; title = 'History could not be read';
+            sub = 'The sheet returned "' + histError + '", so no historical loading was '
+                + 'retrieved and nothing below has been tested against it. If the Apps Script '
+                + 'was deployed before this feature was added, open Deploy \u2192 Manage '
+                + 'deployments and redeploy Code.gs as a New version. Until then, assess on a '
+                + 'single day and treat the result as provisional.';
+            v.className = 'verdict ' + kind;
+            v.appendChild(el('div', 'verdict-title', title));
+            v.appendChild(el('div', 'verdict-sub', sub));
+            $('scopeNote').innerHTML = '';
+            renderScope();
             renderOutstanding();
             return;
         }
@@ -597,10 +714,20 @@
             sub = fails.length + ' rule' + (fails.length === 1 ? '' : 's') + ' failed — '
                 + fails.map(function (r) { return r.id; }).join(', ')
                 + '. ' + fails[0].detail;
+        } else if (!assessed.length) {
+            kind = 'warn'; title = 'Nothing could be assessed';
+            sub = 'No equipment on the supply path has a reading in this period, so no rule '
+                + 'could be computed at all. Choose a different basis, or record the '
+                + 'currents first.';
         } else if (unknowns.length) {
-            kind = 'warn'; title = 'Cannot assess';
-            sub = unknowns.length + ' rule' + (unknowns.length === 1 ? '' : 's')
-                + ' could not be tested with the readings available.';
+            kind = 'warn'; title = 'Accept on the parameters assessed';
+            sub = assessed.length + ' of ' + out.length + ' rules were testable and all pass'
+                + (watches.length ? ' (' + watches.length + ' with a caution)' : '')
+                + '. ' + unknowns.length + ' could not be tested — '
+                + unknowns.map(function (r) { return r.id; }).join(', ')
+                + ' — because that equipment has no recorded history in this period. '
+                + 'This is a conditional acceptance: it holds for what was checked, and the '
+                + 'unchecked items must be closed before connection.';
         } else {
             kind = 'ok'; title = 'Accept subject to the outstanding checks';
             sub = 'Every rule testable from recorded currents passes'
@@ -611,7 +738,72 @@
         v.appendChild(el('div', 'verdict-title', title));
         v.appendChild(el('div', 'verdict-sub', sub));
 
+        /* the span caveat now rides alongside the verdict instead of replacing it */
+        var sn = $('scopeNote');
+        sn.innerHTML = '';
+        if (basis !== 'today' && (cov.quality === 'thin' || cov.quality === 'none') && assessed.length) {
+            var n = el('div', 'cover-banner partial');
+            n.appendChild(el('b', '', 'Read the worst case as a floor, not a ceiling'));
+            n.appendChild(el('span', '', cov.dates
+                ? 'The ' + cov.dates + ' reading date' + (cov.dates === 1 ? '' : 's')
+                  + ' found span ' + cov.spanDays + ' day' + (cov.spanDays === 1 ? '' : 's')
+                  + ' of the ' + cov.wantDays + ' requested. The peaks used below are real, and a '
+                  + 'failure against them is real, but a higher peak may have occurred on a day '
+                  + 'that was never recorded. Treat a pass as provisional.'
+                : 'Nothing is recorded in this period.'));
+            sn.appendChild(n);
+        }
+
+        renderScope();
         renderOutstanding();
+    }
+
+    /* An explicit statement of what the data did and did not support. The
+       page should never leave the reader guessing which parameters stand
+       behind a verdict. */
+    function renderScope() {
+        var host = $('assessedList');
+        host.innerHTML = '';
+
+        var did = out.filter(function (r) { return r && r.verdict !== 'unknown'; });
+        var didnt = out.filter(function (r) { return r && r.verdict === 'unknown'; });
+
+        function block(label, arr, cls, mark, why) {
+            if (!arr.length) return;
+            host.appendChild(el('div', 'scope-head', label));
+            arr.forEach(function (r) {
+                var row = el('div', 'scope-row ' + cls);
+                row.appendChild(el('span', 'mark', mark));
+                var t = el('div', '');
+                t.appendChild(el('b', '', r.id + ' \u00b7 ' + r.title));
+                t.appendChild(el('div', 'rule-clause', r.clause));
+                row.appendChild(t);
+                row.appendChild(el('span', 'why', why(r)));
+                host.appendChild(row);
+            });
+        }
+
+        block('Assessed', did, 'yes', '\u2713', function (r) {
+            var word = r.verdict === 'fail' ? 'Not acceptable'
+                     : r.verdict === 'watch' ? 'Acceptable with a caution' : 'Acceptable';
+            return word + ' \u2014 ' + r.detail;
+        });
+        block('Not assessed \u2014 no data', didnt, 'no', '\u2014', function (r) {
+            return r.detail;
+        });
+
+        if (didnt.length) {
+            var f = el('div', 'scope-row no');
+            f.appendChild(el('span', 'mark', '!'));
+            var t = el('div', '');
+            t.appendChild(el('b', '', 'What this means'));
+            f.appendChild(t);
+            f.appendChild(el('span', 'why',
+                'The verdict above covers only the assessed rows. The items not assessed are '
+                + 'not thereby acceptable \u2014 they are unknown, and each has to be closed by '
+                + 'measurement or by calculation before the load is connected.'));
+            host.appendChild(f);
+        }
     }
 
     function renderOutstanding() {
@@ -622,6 +814,8 @@
          ['Cable short-circuit withstand', 'KOC-E-008 cl. 8.3.1(c),(d) — at the actual protection clearing time'],
          ['Protection discrimination', 'KOC-E-006 cl. 8.6.6 — 0.3 s selectivity interval to be preserved'],
          ['Fault level within ratings', 'KOC-E-003 Pt 1 cl. 9.4.1(c)'],
+         ['Incomer ACB continuous rating', 'A2 judges the incomers against the 2133 A transformer '
+            + 'FLC. The ACB-3 / ACB-4 frame size and trip settings are not on record and may be lower.'],
          ['Board incomer including spare ways', 'KOC-E-009 cl. 26.2 — needs the way schedule for the board'],
          ['Load flow and short circuit studies, KOC approved', 'KOC-E-006 cl. 8.1.1 — required for anything beyond a trivial addition']
         ].forEach(function (x) {
@@ -663,7 +857,7 @@
     }
 
     function loadHistory() {
-        hist = null;
+        hist = null; histError = null;
         var to = $('date').value;
         var from = yearsAgo(Number(basis));
         setBadge('Reading ' + basis + ' year' + (basis === '1' ? '' : 's')
@@ -682,7 +876,8 @@
             })
             .catch(function (e) {
                 console.error('History load failed:', e);
-                setBadge('Could not read history (' + e.message + '). If the sheet was set up '
+                histError = e.message || 'unknown error';
+                setBadge('Could not read history (' + histError + '). If the sheet was set up '
                        + 'before this feature, Code.gs needs redeploying as a New version.');
                 run();
             });
