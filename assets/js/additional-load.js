@@ -178,7 +178,7 @@
         return null;
     }
 
-    /* A2 - the incomer test.
+    /* A1 - the incomer test.
 
        This is deliberately self-sufficient. It needs nothing but the
        incomer's own recorded maximum, so it still returns a real answer on a
@@ -187,7 +187,7 @@
         var name = incomerFor(p.point);
         var sp = KOC.spareCapacity;
         var base = {
-            id: 'A2', title: 'Incomer capacity against the recorded maximum',
+            id: 'A1', title: 'Incomer capacity against the recorded maximum',
             clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + sp.clause + '; cl. 11.2.2',
             rule: 'Incomer current after the addition ≤ its continuous rating, '
                 + 'retaining ' + Math.round(sp.value * 100) + ' % spare'
@@ -278,7 +278,7 @@
         var c = KOC.transformer.doubleRadialFactor;
         var d = basisDemand();
         if (!d) {
-            return push({ id: 'A3', title: 'Transformer capacity, contingency case',
+            return push({ id: 'A2', title: 'Transformer capacity, contingency case',
                 verdict: 'unknown', clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
                 rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
                 detail: histError
@@ -297,7 +297,7 @@
         var pass = cap >= required;
 
         return push({
-            id: 'A3', title: 'Transformer capacity, contingency case',
+            id: 'A2', title: 'Transformer capacity, contingency case',
             verdict: pass ? 'pass' : 'fail',
             clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
             rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
@@ -326,7 +326,7 @@
 
     function ruleGenerator(p) {
         if (p.category === 'non-essential') {
-            return push({ id: 'A4', title: 'Generator capacity',
+            return push({ id: 'A3', title: 'Generator capacity',
                 verdict: 'na', clause: 'KOC-E-003 Pt 1 Rev 4 cl. 9.1.4',
                 rule: 'Non-essential loads are not backed by a generator',
                 detail: 'Not applicable — a non-essential load normally has a single source '
@@ -334,7 +334,7 @@
         }
         var genId = DC_SYSTEM.backedBy[p.point];
         if (!genId) {
-            return push({ id: 'A4', title: 'Generator capacity',
+            return push({ id: 'A3', title: 'Generator capacity',
                 verdict: 'fail', clause: 'KOC-E-003 Pt 1 Rev 4 cl. 9.1.2 / 9.1.3',
                 rule: p.category === 'critical'
                     ? 'Critical loads shall be on no-break supply backed by emergency generator'
@@ -350,7 +350,7 @@
             if (m === null) missing.push(k.split('|')[1]); else backed += m;
         });
         if (missing.length) {
-            return push({ id: 'A4', title: g.id + ' capacity',
+            return push({ id: 'A3', title: g.id + ' capacity',
                 verdict: 'unknown', clause: 'KOC-E-003 Pt 1 Rev 4 cl. 13.2.3 / 13.3.2',
                 rule: 'Continuously rated for Maximum Demand + 15 %',
                 detail: 'Cannot assess — ' + histGap(missing.join(', ')) });
@@ -359,7 +359,7 @@
         var required = 1.15 * after;
         var pass = g.ratedA >= required;
         return push({
-            id: 'A4', title: g.id + ' capacity',
+            id: 'A3', title: g.id + ' capacity',
             verdict: pass ? 'pass' : 'fail',
             clause: 'KOC-E-003 Pt 1 Rev 4 cl. 13.2.3 / 13.3.2',
             rule: 'Continuously rated for Maximum Demand + 15 %',
@@ -387,7 +387,7 @@
             var name = key.split('|')[1];
             var now = basisValue(key);
             var st = basisStats(key);
-            /* the incomers are judged by A3, not here */
+            /* the incomers are judged by A2, not here */
             if (name === 'Incomer A' || name === 'Incomer B') return;
             if (now === null) {
                 rows.push({ name: name, state: 'unknown' }); anyUnknown = true; return;
@@ -404,7 +404,7 @@
         });
 
         return push({
-            id: 'A5', title: 'Feeders on the supply path',
+            id: 'A4', title: 'Feeders on the supply path',
             verdict: anyFail ? 'fail' : anyUnknown ? 'unknown' : 'pass',
             clause: 'KOC-E-009 Rev 3 cl. 6.3; KOC-E-003 Pt 1 cl. 11.2.2',
             rule: 'Every feeder carrying the load ≤ its continuous rating',
@@ -417,7 +417,7 @@
                   + 'between the load and its feeders.',
             note: DC_SYSTEM.unmeteredOnPath[p.point]
                 ? 'Not testable on this path: ' + DC_SYSTEM.unmeteredOnPath[p.point].join(' and ')
-                  + ' carry no meter. Their loading is inferred by A6 where possible.'
+                  + ' carry no meter. Their loading is inferred by A5 where possible.'
                 : ''
         });
     }
@@ -427,7 +427,23 @@
         var chain = DC_SYSTEM.ups.filter(function (u) {
             return u.feeds.indexOf('Main|' + p.point + '|') > -1;
         })[0];
-        if (!chain) return null;
+        if (!chain) {
+            /* Reported rather than omitted, so the sequence always reads A1
+               to A7 and the reader can see the check was considered. That a
+               load is NOT on a UPS is itself worth stating, especially for
+               one declared critical. */
+            return push({ id: 'A5', title: 'UPS backing', verdict: 'na',
+                clause: 'KOC-E-011 Rev 2 cl. 8.7, 19.1.1',
+                rule: 'UPS continuous output, with 15 % spare for future load',
+                detail: 'Not applicable — no UPS supplies ' + p.point + ', so there is no UPS '
+                      + 'capacity to test.'
+                      + (p.category === 'critical'
+                          ? ' Note that the load is declared critical yet would sit on the raw '
+                            + 'supply at this point, held up only by the generator through the '
+                            + 'ATS. Whether that is acceptable is a design question for the '
+                            + 'load, not something these readings can settle.'
+                          : '') });
+        }
 
         var loads = DC_SYSTEM.ups.map(function (u) {
             var sum = 0, miss = false;
@@ -439,7 +455,7 @@
         });
         var mine = loads.filter(function (l) { return l.id === chain.id; })[0];
         if (mine.missing) {
-            return push({ id: 'A6', title: chain.id + ' capacity',
+            return push({ id: 'A5', title: chain.id + ' capacity',
                 verdict: 'unknown', clause: 'KOC-E-011 Rev 2 cl. 8.7, 19.1.1',
                 rule: 'UPS continuous output, with 15 % spare for future load',
                 detail: 'Cannot assess — a PDU reading on this chain is missing.' });
@@ -454,7 +470,7 @@
         var soloOk = mine.ratedA >= total;
 
         return push({
-            id: 'A6', title: chain.id + ' capacity  (' + chain.kva + ' kVA)',
+            id: 'A5', title: chain.id + ' capacity  (' + chain.kva + ' kVA)',
             verdict: pass ? (soloOk ? 'pass' : 'watch') : 'fail',
             clause: 'KOC-E-011 Rev 2 cl. 8.7, 19.1.1; cl. 8.2 for redundancy',
             rule: 'Continuous output with 15 % spare; and either UPS alone carrying the room',
@@ -483,7 +499,7 @@
         var c = KOC.powerQuality.powerFactor;
         var pass = p.pf >= c.min;
         return push({
-            id: 'A7', title: 'Power factor of the new load',
+            id: 'A6', title: 'Power factor of the new load',
             verdict: pass ? 'pass' : 'watch',
             clause: 'KOC-E-003 Pt 1 cl. 9.5.3; KOC-E-006 cl. 9.4.2 (MEWRE Rule 5)',
             rule: 'System power factor ≥ 0.95 lagging',
@@ -503,7 +519,7 @@
         var mw = kvaFromAmps(d.value + p.demandAmps) * p.pf / 1000;
         var pass = mw <= c.value;
         return push({
-            id: 'A8', title: 'Upstream MEW feeder',
+            id: 'A7', title: 'Upstream MEW feeder',
             verdict: pass ? 'pass' : 'fail',
             clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
             rule: 'Maximum power per MEW 11 kV feeder ≤ 5 MW',
@@ -716,13 +732,18 @@
            assessed and stated plainly; anything it does not is named, and
            the verdict is qualified by exactly that list rather than
            replaced by a refusal. */
-        var assessed = out.filter(function (r) { return r && r.verdict !== 'unknown'; });
+        /* "Not applicable" is neither a pass nor a gap: the rule does not
+           bear on this connection point at all, so it must not prop up an
+           acceptance and must not be counted as something left untested. */
+        var assessed = out.filter(function (r) {
+            return r && r.verdict !== 'unknown' && r.verdict !== 'na';
+        });
 
-        /* A7 judges the stated power factor of the proposal itself and needs
+        /* A6 judges the stated power factor of the proposal itself and needs
            no measurement, so it can pass on a site with no readings at all.
            An acceptance resting on nothing else would be an acceptance that
            no capacity was ever checked. */
-        var INPUT_ONLY = ['A7'];
+        var INPUT_ONLY = ['A6'];
         var measured = assessed.filter(function (r) {
             return INPUT_ONLY.indexOf(r.id) < 0;
         });
@@ -806,8 +827,11 @@
         var host = $('assessedList');
         host.innerHTML = '';
 
-        var did = out.filter(function (r) { return r && r.verdict !== 'unknown'; });
+        var did = out.filter(function (r) {
+            return r && r.verdict !== 'unknown' && r.verdict !== 'na';
+        });
         var didnt = out.filter(function (r) { return r && r.verdict === 'unknown'; });
+        var na = out.filter(function (r) { return r && r.verdict === 'na'; });
 
         function block(label, arr, cls, mark, why) {
             if (!arr.length) return;
@@ -827,7 +851,7 @@
         block('Assessed', did, 'yes', '\u2713', function (r) {
             var word = r.verdict === 'fail' ? 'Not acceptable'
                      : r.verdict === 'watch' ? 'Acceptable with a caution' : 'Acceptable';
-            /* A2 already opens its detail with the same word, and "Acceptable
+            /* A1 already opens its detail with the same word, and "Acceptable
                - Acceptable - ..." reads like a stutter. */
             if (/^(Acceptable|Not acceptable|Rejected)\b/i.test(r.detail)) return r.detail;
             return word + ' \u2014 ' + r.detail;
@@ -835,6 +859,9 @@
         block(histError ? 'Not assessed \u2014 history not retrieved'
                         : 'Not assessed \u2014 no data',
               didnt, 'no', '\u2014', function (r) {
+            return r.detail;
+        });
+        block('Not applicable to this connection point', na, 'no', '\u00b7', function (r) {
             return r.detail;
         });
 
@@ -860,7 +887,7 @@
          ['Cable short-circuit withstand', 'KOC-E-008 cl. 8.3.1(c),(d) — at the actual protection clearing time'],
          ['Protection discrimination', 'KOC-E-006 cl. 8.6.6 — 0.3 s selectivity interval to be preserved'],
          ['Fault level within ratings', 'KOC-E-003 Pt 1 cl. 9.4.1(c)'],
-         ['Incomer ACB continuous rating', 'A2 judges the incomers against the 2133 A transformer '
+         ['Incomer ACB continuous rating', 'A1 judges the incomers against the 2133 A transformer '
             + 'FLC. The ACB-3 / ACB-4 frame size and trip settings are not on record and may be lower.'],
          ['Board incomer including spare ways', 'KOC-E-009 cl. 26.2 — needs the way schedule for the board'],
          ['Load flow and short circuit studies, KOC approved', 'KOC-E-006 cl. 8.1.1 — required for anything beyond a trivial addition']
