@@ -129,6 +129,14 @@
         var hit = DC_CONFIG.equipment.filter(function (e) { return e.name === name; })[0];
         return hit && hit.source ? hit.source : '';
     }
+    /* The cable the feeder actually runs on, off the single line diagrams.
+       The page does NOT rate it: ampacity needs the installation method,
+       grouping and route, none of which are on the drawings. Showing the
+       size lets the reader see which circuits are worth checking first. */
+    function cableOf(name) {
+        var hit = DC_CONFIG.equipment.filter(function (e) { return e.name === name; })[0];
+        return hit && hit.cable ? hit.cable : '';
+    }
     function continuousOf(name) {
         var p = ratingOf(name);
         if (!p) return null;
@@ -407,7 +415,8 @@
             if (state === 'norating') anyUnknown = true;
             rows.push({ name: name, now: now, after: after, cont: cont, pct: pct,
                         state: state, st: st,
-                        plate: ratingOf(name), src: sourceOf(name) });
+                        plate: ratingOf(name), src: sourceOf(name),
+                        cable: cableOf(name) });
         });
 
         return push({
@@ -571,7 +580,8 @@
         if (r.rows) {
             var t = el('div', 'ftable');
             var head = el('div', 'frow fhead');
-            ['Feeder', 'Protective device', 'Now', 'After', 'Continuous', '%', ''].forEach(function (x) {
+            ['Feeder', 'Protective device', 'Cable', 'Now', 'After', 'Continuous', '%', '']
+              .forEach(function (x) {
                 head.appendChild(el('span', '', x));
             });
             t.appendChild(head);
@@ -589,6 +599,7 @@
                        study - 32 A is a derated 40 A MCCB, not a 32 A one. */
                     row.appendChild(el('span', 'fmuted',
                         x.plate ? fmt(x.plate) + ' A' + (x.src ? '  ' + x.src : '') : '—'));
+                    row.appendChild(el('span', 'fmuted', x.cable || 'not on the drawings'));
                     row.appendChild(el('span', '', fmt(x.now, 1) + ' A'));
                     row.appendChild(el('span', '', fmt(x.after, 1) + ' A'));
                     row.appendChild(el('span', 'fmuted', x.cont
@@ -897,7 +908,26 @@
     function renderOutstanding() {
         var os = $('outstanding');
         os.innerHTML = '';
-        [['Cable capacity, derated', 'KOC-E-008 cl. 8.3.2 — 50 °C in air, 40 °C buried, grouping and installation method'],
+        /* Name the cables actually on this path. The drawings give the size
+           but not the installation method, grouping or route, so the page
+           states the size and stops there rather than inventing an
+           ampacity. */
+        var p0 = proposal();
+        var onPath = [];
+        if (p0) {
+            (DC_SYSTEM.upstream[p0.point] || []).forEach(function (k) {
+                var n = k.split('|')[1];
+                var c = cableOf(n);
+                if (c) onPath.push(n + ' ' + c);
+            });
+        }
+
+        [['Cable capacity, derated',
+          'KOC-E-008 cl. 8.3.2 — 50 °C in air, 40 °C buried, grouping and installation method. '
+          + (onPath.length
+              ? 'On this path: ' + onPath.join(';  ') + '. Sizes are off the single line '
+                + 'diagrams; the route and installation method are not, so these are not yet rated.'
+              : 'No cable size is recorded for this path.')],
          ['Voltage drop ≤ 2.5 %', 'KOC-E-008 cl. 8.3.4(a)(iii) — needs cable size, length and route'],
          ['Cable short-circuit withstand', 'KOC-E-008 cl. 8.3.1(c),(d) — at the actual protection clearing time'],
          ['Protection discrimination', 'KOC-E-006 cl. 8.6.6 — 0.3 s selectivity interval to be preserved'],
