@@ -34,6 +34,15 @@ const DC_CONFIG = {
   /* ---------------------------------------------------------------
      Main equipment and feeders.
      rated  - device rating in amperes, used for the % loading badge.
+
+     For the PDU feeds there is a breaker at each end, and they differ:
+       ratedSource - the MCCB at the ESMSB end. 160 A on all eight.
+       ratedLoad   - the MCCB at the PDU end. 160 A on PDU 1 to 6,
+                     200 A on PDU 7 and 8.
+     'rated' carries the LOWER of the two, because a circuit's continuous
+     capability is set by its most restrictive protective device - so all
+     eight PDU feeds are governed by the 160 A at the ESMSB end, including
+     the two whose PDU-end breaker is 200 A.
      --------------------------------------------------------------- */
   equipment: [
     { name: 'Incomer A',                    source: 'Transformer A via ACB-4',   rated: 2133, note: '% shown against transformer FLC 2133 A' },
@@ -50,14 +59,14 @@ const DC_CONFIG = {
     { name: 'MSB 7',                         source: 'LT board way 8E',           rated: 400,  note: 'C Building' },
     { name: 'DB 2',                          source: 'LT board way 8F',           rated: 125,  note: 'Generator Room' },
     { name: 'ATS 002',                       source: 'LT board way 9A',           rated: 2000, note: '' },
-    { name: 'PDU 1',                         source: 'ESMSB-1',                   rated: 200,  note: 'Feed A' },
-    { name: 'PDU 3',                         source: 'ESMSB-1',                   rated: 200,  note: 'Feed A' },
-    { name: 'PDU 5',                         source: 'ESMSB-1',                   rated: 200,  note: 'Feed A' },
-    { name: 'PDU 7',                         source: 'ESMSB-1',                   rated: 200,  note: 'Feed A' },
-    { name: 'PDU 6',                         source: 'ESMSB-2',                   rated: 200,  note: 'Feed B' },
-    { name: 'PDU 2',                         source: 'ESMSB-2',                   rated: 200,  note: 'Feed B' },
-    { name: 'PDU 4',                         source: 'ESMSB-2',                   rated: 200,  note: 'Feed B' },
-    { name: 'PDU 8',                         source: 'ESMSB-2',                   rated: 200,  note: 'Feed B' },
+{ name: 'PDU 1',                         source: 'ESMSB-1',                   rated: 160, note: 'Feed A', ratedSource: 160, ratedLoad: 160 },
+{ name: 'PDU 3',                         source: 'ESMSB-1',                   rated: 160, note: 'Feed A', ratedSource: 160, ratedLoad: 160 },
+{ name: 'PDU 5',                         source: 'ESMSB-1',                   rated: 160, note: 'Feed A', ratedSource: 160, ratedLoad: 160 },
+{ name: 'PDU 7',                         source: 'ESMSB-1',                   rated: 160, note: 'Feed A', ratedSource: 160, ratedLoad: 200 },
+{ name: 'PDU 6',                         source: 'ESMSB-2',                   rated: 160, note: 'Feed B', ratedSource: 160, ratedLoad: 160 },
+{ name: 'PDU 2',                         source: 'ESMSB-2',                   rated: 160, note: 'Feed B', ratedSource: 160, ratedLoad: 160 },
+{ name: 'PDU 4',                         source: 'ESMSB-2',                   rated: 160, note: 'Feed B', ratedSource: 160, ratedLoad: 160 },
+{ name: 'PDU 8',                         source: 'ESMSB-2',                   rated: 160, note: 'Feed B', ratedSource: 160, ratedLoad: 200 },
     { name: 'EDB 28',                        source: 'ATS-002 way L6',            rated: 40,   note: 'ATS Room' },
     { name: 'Generator Control Panel',       source: 'ATS-002 way L5',            rated: 125,  note: '' },
     { name: 'EMSB 2',                        source: 'ATS-002 way L1',            rated: 1000, note: '' },

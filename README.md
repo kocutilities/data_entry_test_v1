@@ -387,9 +387,12 @@ The percentage badges are only as good as the ratings behind them. These were
 taken from the drawings and the load schedule, and are worth a check against the
 panels themselves:
 
-- **PDU incoming breakers** are entered as 200 A for all eight. This is
-  confirmed for PDU 7 and PDU 8 from their own drawing; PDU 1 to PDU 6 are
-  assumed the same and have not been verified.
+- **PDU incoming breakers — resolved.** Each PDU feed has a breaker at each end.
+  The ESMSB end is **160 A on all eight**; the PDU end is **160 A on PDU 1 to 6**
+  and **200 A on PDU 7 and 8**. Because a circuit is limited by its most
+  restrictive protective device, **160 A governs every feed** — including the two
+  whose PDU-end breaker is 200 A. The 200 A 4P MCCB noted on the PDU-7/8 drawing
+  is the PDU-end device, which is why the earlier reading of it was too generous.
 - **Zone 4** does not appear in the load schedule, so any ways serving it are
   missing from `pduCircuits`.
 - **PDU 2 and PDU 3** carry 46 and 44 ways against 34 on the other six. That

@@ -25,6 +25,12 @@
    'key' ties a node to the sheet using the same category|equipment|circuit
    key the reading page uses, so a node with a key can carry a measured
    current. Ratings come from config.js so the two pages cannot drift.
+
+   PDU incomer MCCBs: each PDU feed has a breaker at each end. The ESMSB
+   end is 160 A on all eight; the PDU end is 160 A on PDU 1 to 6 and 200 A
+   on PDU 7 and 8. The 200 A 4P MCCB noted on the PDU-7/8 drawing is the
+   PDU-end device. The 160 A at the ESMSB end governs every feed, since a
+   circuit is limited by its most restrictive protective device.
    ============================================================= */
 
 const SLD = (function () {
