@@ -827,6 +827,9 @@
         block('Assessed', did, 'yes', '\u2713', function (r) {
             var word = r.verdict === 'fail' ? 'Not acceptable'
                      : r.verdict === 'watch' ? 'Acceptable with a caution' : 'Acceptable';
+            /* A2 already opens its detail with the same word, and "Acceptable
+               - Acceptable - ..." reads like a stutter. */
+            if (/^(Acceptable|Not acceptable|Rejected)\b/i.test(r.detail)) return r.detail;
             return word + ' \u2014 ' + r.detail;
         });
         block(histError ? 'Not assessed \u2014 history not retrieved'
