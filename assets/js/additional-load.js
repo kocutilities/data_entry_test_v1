@@ -1,0 +1,544 @@
+/* =============================================================
+   KOC Data Center - Additional Load Study
+   additional-load.js
+
+   Takes a proposed load and runs it through the KOC assessment sequence
+   from the standards study, against the currents actually recorded.
+
+   The same three principles as the assessment page. The one that matters
+   most here: a clean "Accept" is almost never available from current
+   readings alone, because cable capacity, voltage drop, discrimination and
+   fault level all need inputs the reading sheet does not hold. The honest
+   verdict is "Accept subject to", with the outstanding items named.
+   ============================================================= */
+
+(function () {
+    'use strict';
+
+    var ENDPOINT_KEY = 'koc-dc-endpoint';
+    var THEME_KEY = 'koc-dc-theme';
+    var DERATE_KEY = 'koc-dc-feeder-plate';
+
+    var $ = function (id) { return document.getElementById(id); };
+    var readings = {};
+    var plateBasis = 'frame';
+
+    var V = DC_SYSTEM.systemVoltage;
+    var SQRT3 = Math.sqrt(3);
+
+    function el(tag, cls, text) {
+        var n = document.createElement(tag);
+        if (cls) n.className = cls;
+        if (text !== undefined) n.textContent = text;
+        return n;
+    }
+    function endpointUrl() {
+        try { return localStorage.getItem(ENDPOINT_KEY) || ''; } catch (e) { return ''; }
+    }
+    function fmt(n, dp) {
+        if (n === null || n === undefined || !isFinite(n)) return '—';
+        return n.toFixed(dp === undefined ? 0 : dp);
+    }
+    function maxPhase(key) {
+        var r = readings[key];
+        if (!r) return null;
+        return Math.max(Number(r.r) || 0, Number(r.y) || 0, Number(r.b) || 0);
+    }
+    function ratingOf(name) {
+        var hit = DC_CONFIG.equipment.filter(function (e) { return e.name === name; })[0];
+        return hit ? hit.rated : null;
+    }
+    function continuousOf(name) {
+        var p = ratingOf(name);
+        if (!p) return null;
+        return plateBasis === 'frame' ? p * KOC.deratingFactor.value : p;
+    }
+    function ampsFromKva(kva) { return kva * 1000 / (SQRT3 * V); }
+    function kvaFromAmps(a) { return SQRT3 * V * a / 1000; }
+
+    /* ---------------------------------------------------------
+       the proposal
+       --------------------------------------------------------- */
+
+    function proposal() {
+        var mode = $('unit').value;
+        var val = parseFloat($('size').value);
+        var pf = parseFloat($('pf').value);
+        if (!isFinite(val) || val <= 0) return null;
+        if (!isFinite(pf) || pf <= 0 || pf > 1) pf = 0.9;
+
+        var kva, kw, amps;
+        if (mode === 'kw') { kw = val; kva = kw / pf; amps = ampsFromKva(kva); }
+        else if (mode === 'kva') { kva = val; kw = kva * pf; amps = ampsFromKva(kva); }
+        else { amps = val; kva = kvaFromAmps(amps); kw = kva * pf; }
+
+        var typeKey = $('loadType').value;                 /* continuous|intermittent|standby */
+        var df = KOC.diversity[typeKey];
+        return {
+            kw: kw, kva: kva, amps: amps, pf: pf,
+            type: typeKey, df: df,
+            demandAmps: amps * df,                          /* contribution to Maximum Demand */
+            category: $('category').value,                  /* critical|essential|non-essential */
+            point: $('point').value,
+            phases: $('phases').value
+        };
+    }
+
+    /* ---------------------------------------------------------
+       the rules
+       --------------------------------------------------------- */
+
+    var out = [];
+    function push(o) { out.push(o); return o; }
+
+    function ruleTransformer(p) {
+        var c = KOC.transformer.doubleRadialFactor;
+        var a = maxPhase('Main|Incomer A|'), b = maxPhase('Main|Incomer B|');
+        if (a === null || b === null) {
+            return push({ id: 'A3', title: 'Transformer capacity, contingency case',
+                verdict: 'unknown', clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
+                rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
+                detail: 'Cannot assess — both incomer readings are needed and at least one is missing.' });
+        }
+        var mdNow = a + b;
+        var mdNew = mdNow + p.demandAmps;
+        var cap = DC_SYSTEM.transformers[0].ratedA;
+        var required = c.value * mdNew;
+        var ceiling = cap / c.value;
+        var pass = cap >= required;
+
+        return push({
+            id: 'A3', title: 'Transformer capacity, contingency case',
+            verdict: pass ? 'pass' : 'fail',
+            clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
+            rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
+            binding: true,
+            figures: [
+                ['Maximum Demand now', fmt(mdNow) + ' A'],
+                ['Proposed contribution', '+' + fmt(p.demandAmps, 1) + ' A'],
+                ['Maximum Demand after', fmt(mdNew) + ' A  (' + fmt(kvaFromAmps(mdNew)) + ' kVA)'],
+                ['Required per transformer', fmt(required) + ' A'],
+                ['Capability per transformer', fmt(cap) + ' A'],
+                ['Utilisation after', fmt(required / cap * 100) + ' %'],
+                ['Demand ceiling', fmt(ceiling) + ' A']
+            ],
+            detail: pass
+                ? 'One transformer alone still carries the whole demand with the 15 % margin. '
+                  + fmt(ceiling - mdNew) + ' A would remain.'
+                : 'Rejected — exceeds the contingency limit by ' + fmt(mdNew - ceiling) + ' A. '
+                  + 'The most that can be added at this demand is ' + fmt(Math.max(0, ceiling - mdNow))
+                  + ' A.',
+            headroomAfter: ceiling - mdNew
+        });
+    }
+
+    function ruleGenerator(p) {
+        if (p.category === 'non-essential') {
+            return push({ id: 'A4', title: 'Generator capacity',
+                verdict: 'na', clause: 'KOC-E-003 Pt 1 Rev 4 cl. 9.1.4',
+                rule: 'Non-essential loads are not backed by a generator',
+                detail: 'Not applicable — a non-essential load normally has a single source '
+                      + 'and no generator backing. If it is in fact to be backed, reclassify it.' });
+        }
+        var genId = DC_SYSTEM.backedBy[p.point];
+        if (!genId) {
+            return push({ id: 'A4', title: 'Generator capacity',
+                verdict: 'fail', clause: 'KOC-E-003 Pt 1 Rev 4 cl. 9.1.2 / 9.1.3',
+                rule: p.category === 'critical'
+                    ? 'Critical loads shall be on no-break supply backed by emergency generator'
+                    : 'Essential loads shall be backed by a standby generator',
+                detail: 'Rejected — ' + p.point + ' is a utility-only supply with no generator '
+                      + 'behind it, so a ' + p.category + ' load connected here would be lost on '
+                      + 'an incomer failure. Choose a generator-backed connection point.' });
+        }
+        var g = DC_SYSTEM.generators.filter(function (x) { return x.id === genId; })[0];
+        var backed = 0, missing = [];
+        g.backs.keys.forEach(function (k) {
+            var m = maxPhase(k);
+            if (m === null) missing.push(k.split('|')[1]); else backed += m;
+        });
+        if (missing.length) {
+            return push({ id: 'A4', title: g.id + ' capacity',
+                verdict: 'unknown', clause: 'KOC-E-003 Pt 1 Rev 4 cl. 13.2.3 / 13.3.2',
+                rule: 'Continuously rated for Maximum Demand + 15 %',
+                detail: 'Cannot assess — no reading for ' + missing.join(', ') + '.' });
+        }
+        var after = backed + p.demandAmps;
+        var required = 1.15 * after;
+        var pass = g.ratedA >= required;
+        return push({
+            id: 'A4', title: g.id + ' capacity',
+            verdict: pass ? 'pass' : 'fail',
+            clause: 'KOC-E-003 Pt 1 Rev 4 cl. 13.2.3 / 13.3.2',
+            rule: 'Continuously rated for Maximum Demand + 15 %',
+            figures: [
+                ['Backed load now', fmt(backed) + ' A'],
+                ['After the addition', fmt(after) + ' A'],
+                ['Required rating', fmt(required) + ' A'],
+                [g.id + ' rating', fmt(g.ratedA) + ' A'],
+                ['Utilisation after', fmt(required / g.ratedA * 100) + ' %']
+            ],
+            detail: pass
+                ? g.id + ' still carries its section with the 15 % margin.'
+                : 'Rejected — ' + g.id + ' would be short by ' + fmt(required - g.ratedA) + ' A. '
+                  + 'The 10 % / 1 hour overload in KOC-E-007 cl. 11.1.6 is a contingency '
+                  + 'allowance and cannot be used to justify planned load.'
+        });
+    }
+
+    /* every metered point on the path from the connection point upward */
+    function ruleUpstream(p) {
+        var path = DC_SYSTEM.upstream[p.point] || [];
+        var rows = [], anyFail = false, anyUnknown = false;
+
+        path.forEach(function (key) {
+            var name = key.split('|')[1];
+            var now = maxPhase(key);
+            /* the incomers are judged by A3, not here */
+            if (name === 'Incomer A' || name === 'Incomer B') return;
+            if (now === null) {
+                rows.push({ name: name, state: 'unknown' }); anyUnknown = true; return;
+            }
+            var cont = continuousOf(name);
+            var after = now + p.amps;      /* a feeder carries the actual current, not the
+                                              diversified demand figure */
+            var pct = cont ? after / cont * 100 : null;
+            var state = pct === null ? 'norating' : pct > 100 ? 'fail' : pct > 87 ? 'watch' : 'pass';
+            if (state === 'fail') anyFail = true;
+            if (state === 'norating') anyUnknown = true;
+            rows.push({ name: name, now: now, after: after, cont: cont, pct: pct, state: state });
+        });
+
+        return push({
+            id: 'A5', title: 'Feeders on the supply path',
+            verdict: anyFail ? 'fail' : anyUnknown ? 'unknown' : 'pass',
+            clause: 'KOC-E-009 Rev 3 cl. 6.3; KOC-E-003 Pt 1 cl. 11.2.2',
+            rule: 'Every feeder carrying the load ≤ its continuous rating',
+            rows: rows,
+            detail: anyFail
+                ? 'Rejected — ' + rows.filter(function (r) { return r.state === 'fail'; })
+                    .map(function (r) { return r.name + ' would reach ' + fmt(r.pct) + ' %'; }).join(', ')
+                    + '.'
+                : 'The full ' + fmt(p.amps, 1) + ' A is applied at every level, with no diversity '
+                  + 'between the load and its feeders.',
+            note: DC_SYSTEM.unmeteredOnPath[p.point]
+                ? 'Not testable on this path: ' + DC_SYSTEM.unmeteredOnPath[p.point].join(' and ')
+                  + ' carry no meter. Their loading is inferred by A6 where possible.'
+                : ''
+        });
+    }
+
+    /* UPS chain, computed from the PDUs it feeds */
+    function ruleUps(p) {
+        var chain = DC_SYSTEM.ups.filter(function (u) {
+            return u.feeds.indexOf('Main|' + p.point + '|') > -1;
+        })[0];
+        if (!chain) return null;
+
+        var loads = DC_SYSTEM.ups.map(function (u) {
+            var sum = 0, miss = false;
+            u.feeds.forEach(function (k) {
+                var m = maxPhase(k);
+                if (m === null) miss = true; else sum += m;
+            });
+            return { id: u.id, kva: u.kva, ratedA: ampsFromKva(u.kva), amps: sum, missing: miss };
+        });
+        var mine = loads.filter(function (l) { return l.id === chain.id; })[0];
+        if (mine.missing) {
+            return push({ id: 'A6', title: chain.id + ' capacity',
+                verdict: 'unknown', clause: 'KOC-E-011 Rev 2 cl. 8.7, 19.1.1',
+                rule: 'UPS continuous output, with 15 % spare for future load',
+                detail: 'Cannot assess — a PDU reading on this chain is missing.' });
+        }
+
+        var after = mine.amps + p.amps;
+        var required = 1.15 * after;
+        var pass = mine.ratedA >= required;
+
+        /* the 2N intent: either UPS alone carrying every PDU */
+        var total = loads.reduce(function (s, l) { return s + l.amps; }, 0) + p.amps;
+        var soloOk = mine.ratedA >= total;
+
+        return push({
+            id: 'A6', title: chain.id + ' capacity  (' + chain.kva + ' kVA)',
+            verdict: pass ? (soloOk ? 'pass' : 'watch') : 'fail',
+            clause: 'KOC-E-011 Rev 2 cl. 8.7, 19.1.1; cl. 8.2 for redundancy',
+            rule: 'Continuous output with 15 % spare; and either UPS alone carrying the room',
+            figures: [
+                [chain.id + ' load now', fmt(mine.amps) + ' A  (' + fmt(kvaFromAmps(mine.amps)) + ' kVA)'],
+                ['After the addition', fmt(after) + ' A'],
+                ['Required with 15 %', fmt(required) + ' A'],
+                [chain.id + ' rating', fmt(mine.ratedA) + ' A  (' + chain.kva + ' kVA)'],
+                ['Both chains after', fmt(total) + ' A  (' + fmt(kvaFromAmps(total)) + ' kVA)'],
+                ['One UPS alone carrying all', soloOk ? 'yes' : 'NO']
+            ],
+            detail: !pass
+                ? 'Rejected — ' + chain.id + ' would be short by ' + fmt(required - mine.ratedA) + ' A.'
+                : soloOk
+                    ? chain.id + ' has capacity, and either UPS alone could still carry the whole room.'
+                    : 'The chain itself has capacity, but after this addition ONE UPS could no longer '
+                      + 'carry the whole room (' + fmt(total) + ' A against ' + fmt(mine.ratedA)
+                      + ' A). The dual-corded arrangement would stop being N+1.',
+            note: 'UPS output is not metered — loading is the sum of the PDUs on the chain. '
+                + 'The "either UPS alone" test is the design intent recorded on the block '
+                + 'diagram; KOC-E-011 cl. 8.2 requires a dual redundant UPS in standard form.'
+        });
+    }
+
+    function rulePowerFactor(p) {
+        var c = KOC.powerQuality.powerFactor;
+        var pass = p.pf >= c.min;
+        return push({
+            id: 'A7', title: 'Power factor of the new load',
+            verdict: pass ? 'pass' : 'watch',
+            clause: 'KOC-E-003 Pt 1 cl. 9.5.3; KOC-E-006 cl. 9.4.2 (MEWRE Rule 5)',
+            rule: 'System power factor ≥ 0.95 lagging',
+            detail: pass
+                ? 'At ' + p.pf.toFixed(2) + ' the new load does not pull the system below 0.95.'
+                : 'The new load is stated at ' + p.pf.toFixed(2) + ', below the 0.95 the system '
+                  + 'must maintain. It does not by itself breach the limit — that depends on the '
+                  + 'whole system — but correction may be needed. System power factor is not '
+                  + 'measured, so this cannot be confirmed from the readings.'
+        });
+    }
+
+    function ruleUpstreamMew(p) {
+        var c = KOC.upstream.mewFeederLimit;
+        var a = maxPhase('Main|Incomer A|'), b = maxPhase('Main|Incomer B|');
+        if (a === null || b === null) return null;
+        var mw = kvaFromAmps(a + b + p.demandAmps) * p.pf / 1000;
+        var pass = mw <= c.value;
+        return push({
+            id: 'A8', title: 'Upstream MEW feeder',
+            verdict: pass ? 'pass' : 'fail',
+            clause: 'KOC-E-003 Pt 1 Rev 4 cl. ' + c.clause,
+            rule: 'Maximum power per MEW 11 kV feeder ≤ 5 MW',
+            figures: [['Estimated demand after', fmt(mw, 2) + ' MW at PF ' + p.pf.toFixed(2)],
+                      ['Limit', c.value + ' MW']],
+            detail: pass ? 'Well within the MEW feeder limit.'
+                         : 'Rejected — would exceed the 5 MW MEW feeder limit.',
+            note: 'Estimated from the LV currents and the stated power factor; the true 11 kV '
+                + 'demand is not metered here.'
+        });
+    }
+
+    /* ---------------------------------------------------------
+       render
+       --------------------------------------------------------- */
+
+    var CHIP = { pass: ['ok', 'Passes'], fail: ['bad', 'Fails'],
+                 unknown: ['warn', 'Cannot assess'], watch: ['warn', 'Caution'],
+                 na: ['muted', 'Not applicable'] };
+
+    function card(r) {
+        var c = el('div', 'rule ' + r.verdict);
+        var h = el('div', 'rule-head');
+        h.appendChild(el('span', 'rule-id', r.id));
+        h.appendChild(el('span', 'rule-title', r.title));
+        var m = CHIP[r.verdict] || CHIP.unknown;
+        h.appendChild(el('span', 'chip ' + m[0], m[1]));
+        c.appendChild(h);
+        c.appendChild(el('div', 'rule-rule', r.rule));
+        c.appendChild(el('div', 'rule-clause', r.clause));
+
+        if (r.figures) {
+            var f = el('div', 'figs');
+            r.figures.forEach(function (x) {
+                var row = el('div', 'fig');
+                row.appendChild(el('span', '', x[0]));
+                row.appendChild(el('b', '', x[1]));
+                f.appendChild(row);
+            });
+            c.appendChild(f);
+        }
+        if (r.rows) {
+            var t = el('div', 'ftable');
+            var head = el('div', 'frow fhead');
+            ['Feeder', 'Now', 'After', 'Continuous', '%', ''].forEach(function (x) {
+                head.appendChild(el('span', '', x));
+            });
+            t.appendChild(head);
+            r.rows.forEach(function (x) {
+                var row = el('div', 'frow ' + x.state);
+                row.appendChild(el('span', 'fname', x.name));
+                if (x.state === 'unknown') {
+                    var s = el('span', 'fmuted', 'not recorded');
+                    s.style.gridColumn = '2 / -1';
+                    row.appendChild(s);
+                } else {
+                    row.appendChild(el('span', '', fmt(x.now, 1) + ' A'));
+                    row.appendChild(el('span', '', fmt(x.after, 1) + ' A'));
+                    row.appendChild(el('span', 'fmuted', x.cont ? fmt(x.cont) + ' A' : '—'));
+                    row.appendChild(el('span', 'fpct', x.pct === null ? '—' : fmt(x.pct) + ' %'));
+                    row.appendChild(el('span', 'fstate',
+                        x.state === 'fail' ? 'over rating' : x.state === 'watch' ? 'above 87 %' : ''));
+                }
+                t.appendChild(row);
+            });
+            c.appendChild(t);
+        }
+        if (r.detail) c.appendChild(el('p', 'rule-detail', r.detail));
+        if (r.note) c.appendChild(el('p', 'rule-note', r.note));
+        return c;
+    }
+
+    function run() {
+        var p = proposal();
+        var host = $('results');
+        host.innerHTML = '';
+        out = [];
+
+        if (!p) {
+            $('verdict').className = 'verdict';
+            $('verdict').innerHTML = '';
+            $('verdict').appendChild(el('div', 'verdict-title', 'Enter a load to assess'));
+            $('summary').innerHTML = '';
+            return;
+        }
+
+        /* what was proposed */
+        var sm = $('summary');
+        sm.innerHTML = '';
+        [['Proposed load', fmt(p.kw, 1) + ' kW  ·  ' + fmt(p.kva, 1) + ' kVA  ·  ' + fmt(p.amps, 1) + ' A'],
+         ['Power factor', p.pf.toFixed(2)],
+         ['Load type', p.type + '  — diversity ' + (p.df * 100) + ' %'],
+         ['Contribution to Maximum Demand', fmt(p.demandAmps, 1) + ' A'],
+         ['Category', p.category],
+         ['Connection point', p.point]].forEach(function (x) {
+            var d = el('div', 'fig');
+            d.appendChild(el('span', '', x[0]));
+            d.appendChild(el('b', '', x[1]));
+            sm.appendChild(d);
+        });
+
+        ruleTransformer(p);
+        ruleGenerator(p);
+        ruleUpstream(p);
+        ruleUps(p);
+        rulePowerFactor(p);
+        ruleUpstreamMew(p);
+
+        out.forEach(function (r) { if (r) host.appendChild(card(r)); });
+
+        /* verdict */
+        var fails = out.filter(function (r) { return r && r.verdict === 'fail'; });
+        var unknowns = out.filter(function (r) { return r && r.verdict === 'unknown'; });
+        var watches = out.filter(function (r) { return r && r.verdict === 'watch'; });
+
+        var v = $('verdict');
+        v.innerHTML = '';
+        var kind, title, sub;
+        if (fails.length) {
+            kind = 'bad'; title = 'Reject';
+            sub = fails.length + ' rule' + (fails.length === 1 ? '' : 's') + ' failed — '
+                + fails.map(function (r) { return r.id; }).join(', ')
+                + '. ' + fails[0].detail;
+        } else if (unknowns.length) {
+            kind = 'warn'; title = 'Cannot assess';
+            sub = unknowns.length + ' rule' + (unknowns.length === 1 ? '' : 's')
+                + ' could not be tested with the readings available.';
+        } else {
+            kind = 'ok'; title = 'Accept subject to the outstanding checks';
+            sub = 'Every rule testable from recorded currents passes'
+                + (watches.length ? ', with ' + watches.length + ' caution' + (watches.length === 1 ? '' : 's') : '')
+                + '. The items below still have to be completed before connection.';
+        }
+        v.className = 'verdict ' + kind;
+        v.appendChild(el('div', 'verdict-title', title));
+        v.appendChild(el('div', 'verdict-sub', sub));
+
+        /* what remains outstanding regardless of the verdict */
+        var os = $('outstanding');
+        os.innerHTML = '';
+        [['Cable capacity, derated', 'KOC-E-008 cl. 8.3.2 — 50 °C in air, 40 °C buried, grouping and installation method'],
+         ['Voltage drop ≤ 2.5 %', 'KOC-E-008 cl. 8.3.4(a)(iii) — needs cable size, length and route'],
+         ['Cable short-circuit withstand', 'KOC-E-008 cl. 8.3.1(c),(d) — at the actual protection clearing time'],
+         ['Protection discrimination', 'KOC-E-006 cl. 8.6.6 — 0.3 s selectivity interval to be preserved'],
+         ['Fault level within ratings', 'KOC-E-003 Pt 1 cl. 9.4.1(c)'],
+         ['Board incomer including spare ways', 'KOC-E-009 cl. 26.2 — needs the way schedule for the board'],
+         ['Load flow and short circuit studies, KOC approved', 'KOC-E-006 cl. 8.1.1 — required for anything beyond a trivial addition']
+        ].forEach(function (x) {
+            var row = el('div', 'narow');
+            row.appendChild(el('b', '', x[0]));
+            row.appendChild(el('span', 'rule-clause', x[1]));
+            os.appendChild(row);
+        });
+    }
+
+    /* ---------------------------------------------------------
+       data
+       --------------------------------------------------------- */
+
+    function setBadge(msg, busy) {
+        var b = $('status');
+        b.innerHTML = '';
+        if (busy) b.appendChild(el('span', 'spinner'));
+        b.appendChild(el('span', '', msg));
+    }
+
+    function load() {
+        var date = $('date').value;
+        readings = {};
+        if (!endpointUrl()) {
+            setBadge('No sheet connected on this device — open the Load Reading page to connect');
+            run();
+            return Promise.resolve();
+        }
+        setBadge('Reading the sheet…', true);
+        return fetch(endpointUrl(), {
+            method: 'POST', body: JSON.stringify({ type: 'status', date: date })
+        })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function (d) {
+                if (!d || d.result !== 'success') throw new Error((d && d.message) || 'Unexpected response');
+                readings = d.recorded || {};
+                setBadge(Object.keys(readings).length + ' readings recorded for ' + date
+                       + ' — the study is judged against these');
+                run();
+            })
+            .catch(function (e) {
+                console.error('Additional load study failed to load readings:', e);
+                setBadge('Could not read the sheet (' + e.message + ')');
+                run();
+            });
+    }
+
+    function init() {
+        $('date').value = new Date().toISOString().slice(0, 10);
+
+        /* connection points, generator-backed ones marked */
+        var sel = $('point');
+        DC_CONFIG.equipment.forEach(function (e) {
+            if (e.name === 'Incomer A' || e.name === 'Incomer B') return;
+            var o = document.createElement('option');
+            o.value = e.name;
+            var g = DC_SYSTEM.backedBy[e.name];
+            o.textContent = e.name + (g ? '  · backed by ' + g : '  · utility only');
+            sel.appendChild(o);
+        });
+        sel.value = 'PDU 1';
+
+        try { plateBasis = localStorage.getItem(DERATE_KEY) || 'frame'; } catch (e) { plateBasis = 'frame'; }
+
+        ['size', 'unit', 'pf', 'loadType', 'category', 'point', 'phases'].forEach(function (id) {
+            $(id).addEventListener('input', run);
+            $(id).addEventListener('change', run);
+        });
+        $('date').addEventListener('change', load);
+        $('refresh').addEventListener('click', load);
+
+        $('themeBtn').addEventListener('click', function () {
+            var t = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', t);
+            try { localStorage.setItem(THEME_KEY, t); } catch (e) { /* ignore */ }
+        });
+        var saved;
+        try { saved = localStorage.getItem(THEME_KEY); } catch (e) { saved = null; }
+        document.documentElement.setAttribute('data-theme', saved || 'dark');
+
+        load();
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();
