@@ -171,6 +171,44 @@ const KOC = {
             text: 'Derating factors for cables and flexible cords shall be taken from ' +
                   'BS 7671 / Manufacturers catalogues.',
             note: 'Cables are explicitly excluded from the 0.8 factor.'
+        },
+
+        /* Checked against the standard on 2026-09-07: KOC publishes NO cable
+           ampacity tables. Not in E-008, whose only appendices are an
+           inspection checklist and a route marker drawing, and not in E-023,
+           which requires the MANUFACTURER to supply catalogues of current
+           ratings and derating factors. Any ampacity figure has to be
+           calculated per IEC 60287 for the actual installation - a number
+           quoted from a generic table is not a KOC-compliant answer. */
+        currentRating: {
+            status: 'M-RP', std: 'KOC-E-008 Rev 6', clause: '8.3.2',
+            text: 'The permissible current rating of cable shall be calculated in ' +
+                  'accordance with the requirements of relevant parts of IEC 60287 and ' +
+                  'the recommendations of Manufacturer.',
+            note: 'KOC states no ampacity table of its own. The inputs it does fix are ' +
+                  '50 degC air / 40 degC buried, soil resistivity not below 2 K.m/W, ' +
+                  'installation method, grouping and depth.',
+            tables: false
+        },
+
+        /* The one clause that lets the page say anything at all about a cable
+           it cannot rate. It bounds the cable FROM BELOW by its protection:
+           on a compliant installation the cable carries at least the device
+           setting. It says nothing about how much more. */
+        overcurrentProtection: {
+            status: 'M-RP', std: 'KOC-E-008 Rev 6', clause: '8.3.5',
+            text: 'The overcurrent protection device shall be set not to exceed the ' +
+                  'current carrying capacity of the selected cables under the installed ' +
+                  'conditions.',
+            note: 'Inference, one way only: cable capacity >= device rating, IF the ' +
+                  'original design complied and the installed conditions have not changed. ' +
+                  'A load within the device rating therefore needs no separate cable ' +
+                  'check; a load beyond it puts the cable in question too.'
+        },
+
+        minConductor: {
+            lvPowerFeeder: 4, lvControl: 2.5, hv: 35, unit: 'mm2',
+            status: 'M-RP', std: 'KOC-E-008 Rev 6', clause: '8.4'
         }
     },
 

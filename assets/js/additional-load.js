@@ -416,7 +416,12 @@
             rows.push({ name: name, now: now, after: after, cont: cont, pct: pct,
                         state: state, st: st,
                         plate: ratingOf(name), src: sourceOf(name),
-                        cable: cableOf(name) });
+                        cable: cableOf(name),
+                        /* cl. 8.3.5 bounds the cable from below by its
+                           protection, so a current inside the device rating
+                           needs no separate cable check - but one beyond it
+                           has left what the cable was ever shown to carry. */
+                        cableAtRisk: !!(ratingOf(name) && after > ratingOf(name)) });
         });
 
         return push({
@@ -599,7 +604,10 @@
                        study - 32 A is a derated 40 A MCCB, not a 32 A one. */
                     row.appendChild(el('span', 'fmuted',
                         x.plate ? fmt(x.plate) + ' A' + (x.src ? '  ' + x.src : '') : '—'));
-                    row.appendChild(el('span', 'fmuted', x.cable || 'not on the drawings'));
+                    var cc = el('span', x.cableAtRisk ? 'fpct' : 'fmuted',
+                                x.cable || 'not on the drawings');
+                    if (x.cable && x.cableAtRisk) cc.textContent = x.cable + '  ⚠';
+                    row.appendChild(cc);
                     row.appendChild(el('span', '', fmt(x.now, 1) + ' A'));
                     row.appendChild(el('span', '', fmt(x.after, 1) + ' A'));
                     row.appendChild(el('span', 'fmuted', x.cont
@@ -922,12 +930,39 @@
             });
         }
 
-        [['Cable capacity, derated',
-          'KOC-E-008 cl. 8.3.2 — 50 °C in air, 40 °C buried, grouping and installation method. '
-          + (onPath.length
-              ? 'On this path: ' + onPath.join(';  ') + '. Sizes are off the single line '
-                + 'diagrams; the route and installation method are not, so these are not yet rated.'
-              : 'No cable size is recorded for this path.')],
+        /* What the standards actually permit us to say. KOC publishes no
+           ampacity table - cl. 8.3.2 sends the calculation to IEC 60287 and
+           the manufacturer - so the only defensible statement about an
+           unrated cable comes from cl. 8.3.5, and it runs one way only. */
+        var over = [];
+        if (p0) {
+            (DC_SYSTEM.upstream[p0.point] || []).forEach(function (k) {
+                var n = k.split('|')[1];
+                var r = ratingOf(n), c = cableOf(n);
+                if (!r || !c) return;
+                var now = basisValue(k);
+                if (now !== null && now + p0.amps > r) over.push(n + ' ' + c);
+            });
+        }
+
+        [['Cable capacity, per IEC 60287',
+          'KOC-E-008 cl. 8.3.2 — KOC publishes no ampacity table; the rating must be '
+          + 'calculated per IEC 60287 for the actual installation, at 50 °C in air or 40 °C '
+          + 'buried, soil resistivity ≥ 2 K·m/W, with grouping and installation method. '
+          + 'cl. 8.3.5 requires the protective device to be set no higher than the cable can '
+          + 'carry, so on a compliant installation each cable already carries at least its '
+          + 'device rating — which is why a load inside that rating needs no separate cable '
+          + 'check. That inference runs one way only. '
+          + (over.length
+              ? 'It does NOT cover ' + over.join('; ') + ', which this load pushes past the '
+                + 'device rating and therefore past anything the cable was ever shown to '
+                + 'carry. Rate these before proceeding.'
+              : onPath.length
+                  ? 'Nothing on this path exceeds its device rating, so the cables are '
+                    + 'presumed adequate on that basis. Confirm the installed conditions '
+                    + 'still match the original design — added grouping or a changed route '
+                    + 'invalidates it. On this path: ' + onPath.join(';  ') + '.'
+                  : 'No cable size is recorded for this path.')],
          ['Voltage drop ≤ 2.5 %', 'KOC-E-008 cl. 8.3.4(a)(iii) — needs cable size, length and route'],
          ['Cable short-circuit withstand', 'KOC-E-008 cl. 8.3.1(c),(d) — at the actual protection clearing time'],
          ['Protection discrimination', 'KOC-E-006 cl. 8.6.6 — 0.3 s selectivity interval to be preserved'],
