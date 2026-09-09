@@ -1002,3 +1002,33 @@ html[data-theme="light"] .banner code { background: rgba(16,24,41,.08); }
 .side-signout:hover { color: var(--text); border-color: var(--border-strong); }
 .side-signout .i { width: 15px; height: 15px; flex: 0 0 auto; }
 .side-signout em { font-style: normal; color: var(--text-faint); font-weight: 500; }
+
+/* ---------- who is taking the readings ---------- */
+
+.by-row { display: flex; gap: 6px; align-items: stretch; }
+.by-row select { flex: 1 1 auto; min-width: 0; }
+.by-row input  { flex: 0 0 84px; text-align: center; letter-spacing: .28em; }
+
+.field-note.ok  { color: var(--good); }
+.field-note.bad { color: var(--bad); }
+
+/* The bar that says why nothing can be typed yet. It only exists while the
+   page is locked, so it is never a permanent scold. */
+.lockbar {
+    display: flex; align-items: center; gap: 9px;
+    margin: 0 0 16px; padding: 11px 15px;
+    border-radius: 12px;
+    background: var(--warn-soft); border: 1px solid rgba(251,191,36,.36);
+    color: var(--warn); font-size: 12.8px; font-weight: 600;
+}
+.lockbar .i { width: 16px; height: 16px; flex: 0 0 auto; }
+body:not(.entry-locked) .lockbar { display: none; }
+
+/* Locked rows are dimmed but still readable - what is already on the sheet
+   stays legible, it just cannot be added to. */
+.entry-locked .row .cell-r input,
+.entry-locked .row .cell-y input,
+.entry-locked .row .cell-b input { opacity: .55; }
+.entry-locked .row-submit,
+.entry-locked .row-edit,
+.entry-locked .pdu-submit { display: none; }

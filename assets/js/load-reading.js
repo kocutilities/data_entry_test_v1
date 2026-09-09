@@ -23,11 +23,36 @@
 
     var DRAFT_KEY = 'koc-dc-load-reading-draft-v2';
     var THEME_KEY = 'koc-dc-theme';
-    var NAME_KEY  = 'koc-dc-taken-by';
     var ENDPOINT_KEY = 'koc-dc-endpoint';
     var LATEST_KEY = 'koc-dc-latest-date';
     var CACHE_KEY = 'koc-dc-status-cache';
     var CACHE_DATES = 3;          /* today, yesterday, and one to spare */
+    var WHO_KEY = 'koc-dc-reader';
+    var WHO_HOURS = 12;           /* one shift, same as the app session */
+
+    /* Who may record readings, and the SHA-256 of their code.
+
+       This exists so the "Taken by" against a reading is the person who took
+       it. It stops the wrong name being picked; it does not stop someone
+       choosing to be someone else. The codes are five sequential numbers in
+       a file the browser downloads, so anyone who learns one can work out
+       the rest. If that matters, give them codes that are not sequential -
+       run  await KOCAuth.hash('the new code')  in the console and paste the
+       result over the hash below. */
+    var READERS = [
+        { name: 'Eng. Ali Al Ajmi',
+          hash: '7a3e6b16cb75f48fb897eff3ae732f3154f6d203b53f33660f01b4c3b6bc2df9' },
+        { name: 'Jais',
+          hash: 'a1dd6837f284625bdb1cb68f1dbc85c5dc4d8b05bae24c94ed5f55c477326ea2' },
+        { name: 'Abilash',
+          hash: '88c0413bfef1d0570a8a6f9c780a8d2c9e90c4d107551d62bf3cec9ff1f5b634' },
+        { name: 'Neemon',
+          hash: '9c1850fcaa632f2189deac5e9b66e02fa85be92a920b6cae7696c9b691e4bacb' },
+        { name: 'Manikandan',
+          hash: '5a96acc64c72c5b2b890cf2855d036cacc054d61a360be4da12c1fa47dc0b480' }
+    ];
+
+    var readerOk = false;         /* nothing can be typed until this is true */
     /* set once the operator picks a date themselves, so a background
        correction never drags them off the date they chose */
     var dateChosenByUser = false;
@@ -269,7 +294,7 @@
         row.classList.toggle('row-error', state === 'error');
 
         row.querySelectorAll('input[data-phase]').forEach(function (i) {
-            i.readOnly = locked || state === 'sending';
+            i.readOnly = locked || state === 'sending' || !readerOk;
         });
 
 
@@ -553,24 +578,26 @@
 
             var n = pendingIn(panel).length;
             var sub = panel.querySelector('.pdu-submit');
-            sub.disabled = n === 0;
+            sub.disabled = n === 0 || !readerOk;
             sub.textContent = n ? 'Submit ' + n + ' pending' : 'Submit pending';
         });
 
         var mainPending = pendingIn($('mainRows')).length;
         var mainBtn = $('submitMain');
-        mainBtn.disabled = mainPending === 0;
+        mainBtn.disabled = mainPending === 0 || !readerOk;
         mainBtn.textContent = mainPending ? 'Submit ' + mainPending + ' pending' : 'Submit pending';
 
         /* One request carries any number of rows, so submitting everything
            entered costs about the same wait as submitting one. */
         var allBtn = $('submitAll');
-        allBtn.disabled = pending === 0;
+        allBtn.disabled = pending === 0 || !readerOk;
         allBtn.lastElementChild.textContent =
             pending ? 'Submit all ' + pending + ' pending' : 'Submit all pending';
-        allBtn.title = pending
-            ? 'Send all ' + pending + ' readings entered on this page in one request'
-            : 'Nothing entered that has not already been recorded';
+        allBtn.title = !readerOk
+            ? 'Select your name and enter your code first'
+            : pending
+                ? 'Send all ' + pending + ' readings entered on this page in one request'
+                : 'Nothing entered that has not already been recorded';
     }
 
     /* ---------------------------------------------------------
@@ -613,7 +640,6 @@
         if (d.meta) {
             if (d.meta.time && !$('fTime').value) $('fTime').value = d.meta.time;
             if (d.meta.takenBy && !$('fBy').value) $('fBy').value = d.meta.takenBy;
-            if (d.meta.remarks && !$('fRemarks').value) $('fRemarks').value = d.meta.remarks;
         }
 
         var n = 0;
@@ -658,7 +684,7 @@
             date:    $('fDate').value,
             time:    $('fTime').value,
             takenBy: $('fBy').value.trim(),
-            remarks: $('fRemarks').value.trim()
+            remarks: ''
         };
     }
 
@@ -884,6 +910,7 @@
                     });
                 }
 
+                if (d.dates) fillPastDates(d.dates, date);
                 var n = applyRecorded(d.recorded);
                 cacheWrite(date, d.recorded || {});
                 markStatusBadge(n + ' already recorded for ' + date);
@@ -912,6 +939,85 @@
                 loadDraft();
                 refreshTotals();
             });
+    }
+
+    /* The days the sheet already holds something for, newest first. Comes
+       back with the status reply rather than as a request of its own. */
+    function fillPastDates(dates, current) {
+        var sel = $('fPastDate');
+        if (!dates || !dates.length) return;
+        var same = sel.options.length === dates.length + 1;
+        if (!same) {
+            sel.innerHTML = '';
+            sel.appendChild(el('option', '', 'Recorded dates…'));
+            sel.lastChild.value = '';
+            dates.forEach(function (d) {
+                var o = el('option', '', prettyDate(d));
+                o.value = d;
+                sel.appendChild(o);
+            });
+        }
+        sel.value = dates.indexOf(current) > -1 ? current : '';
+        $('pastNote').textContent = dates.length + ' day' + (dates.length === 1 ? '' : 's') + ' on record';
+    }
+
+    /* ---------------------------------------------------------
+       who is taking the readings
+       --------------------------------------------------------- */
+
+    function readerByName(name) {
+        for (var i = 0; i < READERS.length; i++) {
+            if (READERS[i].name === name) return READERS[i];
+        }
+        return null;
+    }
+
+    function setReaderNote(kind, text) {
+        var el2 = $('byStatus');
+        el2.className = 'field-note' + (kind ? ' ' + kind : '');
+        el2.textContent = text || '';
+    }
+
+    /* Everything that has to change when the page locks or unlocks. Row state
+       already decides readOnly, so re-running it is enough to apply the new
+       answer to every input at once. */
+    function applyReaderState() {
+        document.body.classList.toggle('entry-locked', !readerOk);
+        allRows.forEach(function (row) { setRowState(row, row._state); });
+        refreshTotals();
+    }
+
+    function unlockAs(name) {
+        readerOk = true;
+        $('fPin').value = '';
+        $('fPin').disabled = true;
+        setReaderNote('ok', name + ' \u2014 verified');
+        try {
+            localStorage.setItem(WHO_KEY, JSON.stringify(
+                { name: name, until: Date.now() + WHO_HOURS * 3600 * 1000 }));
+        } catch (e) { /* ignore */ }
+        applyReaderState();
+    }
+
+    function lockReader(note, kind) {
+        readerOk = false;
+        $('fPin').disabled = false;
+        setReaderNote(kind || '', note || '');
+        try { localStorage.removeItem(WHO_KEY); } catch (e) { /* ignore */ }
+        applyReaderState();
+    }
+
+    function tryVerify() {
+        var name = $('fBy').value;
+        var pin = $('fPin').value;
+        if (!name) { lockReader('Select your name.', ''); return; }
+        var rec = readerByName(name);
+        if (!rec || !pin) { lockReader('Enter your code.', ''); return; }
+
+        KOCAuth.hash(pin).then(function (h) {
+            if (h === rec.hash) unlockAs(name);
+            else if (pin.length >= 3) lockReader('That code does not match ' + name + '.', 'bad');
+        });
     }
 
     /* ---------------------------------------------------------
@@ -960,6 +1066,11 @@
      * button, the section buttons - so state is marked the same way.
      */
     function submitRows(rows) {
+        if (!readerOk) {
+            setStatus('err', 'Select your name and enter your code before submitting.');
+            $('fBy').focus();
+            return;
+        }
         rows = (rows || []).filter(hasValues);
         if (!rows.length) return;
 
@@ -1222,6 +1333,11 @@
         /* everything on the page, main equipment and every PDU panel,
            whether the panel is open or not */
         $('submitAll').addEventListener('click', function () {
+            if (!readerOk) {
+                setStatus('err', 'Select your name and enter your code before submitting.');
+                $('fBy').focus();
+                return;
+            }
             var rows = pendingIn(document);
             if (!rows.length) return;
             confirmDate(rows.length).then(function (ok) {
@@ -1279,14 +1395,38 @@
         try { saved = localStorage.getItem(THEME_KEY); } catch (e) { saved = null; }
         applyTheme(saved || 'dark');
 
-        /* the readings are usually taken by the same person - ask once */
-        try {
-            var who = localStorage.getItem(NAME_KEY);
-            if (who) $('fBy').value = who;
-        } catch (e) { /* ignore */ }
+        /* the five people who record readings */
+        READERS.forEach(function (r) {
+            var o = el('option', '', r.name);
+            o.value = r.name;
+            $('fBy').appendChild(o);
+        });
 
         $('fBy').addEventListener('change', function () {
-            try { localStorage.setItem(NAME_KEY, $('fBy').value.trim()); } catch (e) { /* ignore */ }
+            if (readerOk) lockReader('Enter the code for ' + ($('fBy').value || 'this name') + '.', '');
+            else tryVerify();
+        });
+        $('fPin').addEventListener('input', tryVerify);
+
+        /* a verification from earlier in the shift still stands */
+        var remembered = null;
+        try { remembered = JSON.parse(localStorage.getItem(WHO_KEY) || 'null'); }
+        catch (e) { remembered = null; }
+        if (remembered && remembered.until > Date.now() && readerByName(remembered.name)) {
+            $('fBy').value = remembered.name;
+            unlockAs(remembered.name);
+        } else {
+            lockReader('Select your name and enter your code.', '');
+        }
+
+        /* picking a past date loads it, exactly as changing the date field does */
+        $('fPastDate').addEventListener('change', function () {
+            var d = $('fPastDate').value;
+            if (!d) return;
+            dateChosenByUser = true;
+            $('fDate').value = d;
+            setStatus('', '');
+            loadStatusForDate();
         });
 
         function showConnection() {

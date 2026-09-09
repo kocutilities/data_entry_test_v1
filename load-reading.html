@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="Load Reading">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=c0d30bdd">
-<script src="assets/js/auth.js?v=c0d30bdd"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=f525fb93">
+<script src="assets/js/auth.js?v=f525fb93"></script>
 <script>KOCAuth.require();</script>
 </head>
 <body>
@@ -136,14 +136,30 @@
                     </div>
                     <div>
                         <label for="fBy">Taken by</label>
-                        <input type="text" id="fBy" placeholder="Name" autocomplete="name" required>
+                        <div class="by-row">
+                            <select id="fBy" required>
+                                <option value="">Select name…</option>
+                            </select>
+                            <input type="password" id="fPin" inputmode="numeric"
+                                   autocomplete="off" placeholder="Code"
+                                   aria-label="Code for the selected name">
+                        </div>
+                        <div class="field-note" id="byStatus"></div>
                     </div>
                     <div>
-                        <label for="fRemarks">Remarks</label>
-                        <input type="text" id="fRemarks" placeholder="Optional">
+                        <label for="fPastDate">Show readings from</label>
+                        <select id="fPastDate">
+                            <option value="">Recorded dates…</option>
+                        </select>
+                        <div class="field-note" id="pastNote"></div>
                     </div>
                 </div>
             </section>
+
+            <div class="lockbar" id="lockBar">
+                <svg class="i" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                <span>Select your name and enter your code to record readings.</span>
+            </div>
 
             <!-- ---------- progress strip ---------- -->
             <div class="strip">
@@ -253,8 +269,8 @@
     </main>
 </div>
 
-<script src="assets/js/config.js?v=c0d30bdd"></script>
-<script src="assets/js/load-reading.js?v=c0d30bdd"></script>
-<script src="assets/js/auth-ui.js?v=c0d30bdd"></script>
+<script src="assets/js/config.js?v=f525fb93"></script>
+<script src="assets/js/load-reading.js?v=f525fb93"></script>
+<script src="assets/js/auth-ui.js?v=f525fb93"></script>
 </body>
 </html>

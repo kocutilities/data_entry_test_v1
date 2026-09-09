@@ -93,8 +93,12 @@ function handleStatus(payload) {
     recorded[key] = { r: hit.r, y: hit.y, b: hit.b, row: hit.row };
   }
 
+  LAST_SCAN_DATES_.sort();
+  LAST_SCAN_DATES_.reverse();
+
   return json({ result: 'success', date: date, recorded: recorded,
-                latest: LAST_SCAN_LATEST_ });
+                latest: LAST_SCAN_LATEST_,
+                dates: LAST_SCAN_DATES_.slice(0, 120) });
 }
 
 
@@ -361,6 +365,11 @@ function buildRow(stamp, meta, r) {
    just to answer "what is the most recent day on the sheet". */
 var LAST_SCAN_LATEST_ = null;
 
+/* Every distinct date seen by that same pass, newest first. Also free - the
+   page needs it to offer a list of days to look back at, and asking for it
+   separately would be another round trip for something already in hand. */
+var LAST_SCAN_DATES_ = [];
+
 function readIndex(date) {
   var sheet = getSheet();
   var last = sheet.getLastRow();
@@ -371,17 +380,22 @@ function readIndex(date) {
      only bites when one instance serves two requests, but is wrong either
      way and is exactly what the test caught. */
   LAST_SCAN_LATEST_ = null;
+  LAST_SCAN_DATES_ = [];
 
   if (last < 2) return index;
 
   var width = C_B - C_DATE + 1;                       // Date .. B
   var data = sheet.getRange(2, C_DATE, last - 1, width).getValues();
   var want = normaliseDate(date);
+  var seenDates = {};
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
     var d = normaliseDate(row[0]);
-    if (d && (LAST_SCAN_LATEST_ === null || d > LAST_SCAN_LATEST_)) LAST_SCAN_LATEST_ = d;
+    if (d) {
+      if (LAST_SCAN_LATEST_ === null || d > LAST_SCAN_LATEST_) LAST_SCAN_LATEST_ = d;
+      if (seenDates[d] === undefined) { seenDates[d] = true; LAST_SCAN_DATES_.push(d); }
+    }
     if (d !== want) continue;
 
     var key = rowKey(row[C_CATEGORY - C_DATE],
