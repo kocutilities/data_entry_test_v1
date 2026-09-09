@@ -348,6 +348,19 @@ PDU['PDU 7'] = [
     ('Q47', '3', '32A', ''),           ('Q48', '3', '32A', ''),
 ]
 
+# Ways drawn as a spare INDUSTRIAL SOCKET rather than a bare spare. The
+# drawings are not consistent about it - PDU 1 and 3 write "SPARE IND.SOCKET",
+# PDU 4, 5 and 6 write "SPARE IND SOCKET" - so config.js carries one spelling,
+# "SPARE IND. SOCKET". PDU 2, 7 and 8 have none.
+SPARE_IND_SOCKET = {
+    'PDU 1': ['Q46', 'Q47', 'Q48', 'Q49', 'Q50'],
+    'PDU 3': ['Q44', 'Q45', 'Q46', 'Q47', 'Q48'],
+    'PDU 4': ['Q43', 'Q44', 'Q45', 'Q46', 'Q47'],
+    'PDU 5': ['Q43', 'Q44', 'Q45', 'Q46', 'Q47'],
+    'PDU 6': ['Q46', 'Q47', 'Q48', 'Q49', 'Q50'],
+}
+
+
 # Ways whose drawn label carries BOTH "SPARE" and a cabin name. Not resolved
 # here - the drawing does not say which reading is current. The cabin name is
 # kept so a reading can still be entered, and these are reported to the user.

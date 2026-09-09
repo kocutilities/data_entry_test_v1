@@ -120,8 +120,10 @@
     function buildRow(item) {
         var row = el('div', 'row');
         row.dataset.key = item.key;
-        /* a spare way has nothing connected - still recordable, just quiet */
-        if ((item.rack || '').toUpperCase() === 'SPARE') row.classList.add('is-spare');
+        /* A spare way has nothing connected - still recordable, just quiet.
+           Matched on the prefix, because the drawings qualify some of them:
+           "SPARE IND. SOCKET" is still a spare and should read as one. */
+        if ((item.rack || '').toUpperCase().indexOf('SPARE') === 0) row.classList.add('is-spare');
 
         var cn = el('div', 'cell-n');
         cn.appendChild(el('div', 'row-name', item.name));
