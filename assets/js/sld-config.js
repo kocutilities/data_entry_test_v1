@@ -69,10 +69,10 @@ const SLD = (function () {
            label: 'TRANSFORMER A', sub: '1600 kVA · 11 kV / 433 V · Dy11 · Z 5.74 %',
            note: 'FLC 2133 A. ONAN, 1981.' });
 
-    node({ id: 'acb3', kind: 'breaker', x: XB, y: 292, w: 160, h: 36,
+    node({ id: 'acb3', kind: 'breaker', x: XB, y: 292, w: 210, h: 36,
            label: 'ACB-3 · 3200 A', sub: 'normally closed · B.C 65 kA',
            key: 'Main|Incomer B|' });
-    node({ id: 'acb4', kind: 'breaker', x: XA, y: 292, w: 160, h: 36,
+    node({ id: 'acb4', kind: 'breaker', x: XA, y: 292, w: 210, h: 36,
            label: 'ACB-4 · 3200 A', sub: 'normally closed · B.C 65 kA',
            key: 'Main|Incomer A|' });
 
@@ -84,11 +84,11 @@ const SLD = (function () {
 
     /* ---------------- the LT board ---------------- */
 
-    node({ id: 'busB', kind: 'busbar', x: 740, y: 406, w: 820, h: 12,
+    node({ id: 'busB', kind: 'busbar', x: 740, y: 406, w: 820, h: 24,
            label: 'SECTION B BUSBAR',
            note: 'ATS & Maintained Board. System 415 / 240 V, 3 Ph 4 W, ' +
                  '50 Hz. Busbar 3000 A, 80 kA for 1 s.' });
-    node({ id: 'busA', kind: 'busbar', x: 1820, y: 406, w: 900, h: 12,
+    node({ id: 'busA', kind: 'busbar', x: 1820, y: 406, w: 900, h: 24,
            label: 'SECTION A BUSBAR' });
 
     node({ id: 'coupler', kind: 'coupler', x: 1260, y: 407, w: 204, h: 58,
@@ -104,8 +104,9 @@ const SLD = (function () {
 
     /* ---------------- ATS-001 and the emergency section ---------------- */
 
-    node({ id: 'gen1', kind: 'generator', x: 400, y: 200, w: 146, h: 108,
-           label: 'GENERATOR 1', sub: 'Munartech DD1000 · 1000 kVA · 1391 A · 415 V',
+    node({ id: 'gen1', kind: 'generator', x: 400, y: 200, w: 220, h: 108,
+           label: 'GENERATOR 1', sub: 'Munartech DD1000',
+           sub2: '1000 kVA', sub3: '1391 A · 415 V',
            note: 's/n M0471-7, 800 kW, 1500 rpm. Connects through a 2000 A ' +
                  'ACB-2 emergency breaker.' });
 
@@ -114,7 +115,7 @@ const SLD = (function () {
            sub: 'ACB-1 / ACB-2 · 2000 A · interlocked · auto changeover',
            note: 'Not a separate cubicle - it is part of the LT switchboard.' });
 
-    node({ id: 'ebar', kind: 'embar', x: 750, y: 523, w: 810, h: 11,
+    node({ id: 'ebar', kind: 'embar', x: 750, y: 523, w: 810, h: 24,
            label: 'EMERGENCY (GENERATOR-BACKED) SECTION' });
 
     edge('busB', 'ats1', { side: 'utility' });
@@ -138,7 +139,7 @@ const SLD = (function () {
     node({ id: 'msb10', kind: 'board', x: 1250, y: 663, w: 128, h: 46,
            label: 'MSB-10', sub: '6D · 630 A', key: 'Main|MSB 10|',
            note: 'E Building. Utility only - lost if Section B is lost.' });
-    edge('busB', 'msb10');
+    edge('busB', 'msb10', { pts: [[1080, 418], [1080, 452], [1250, 452], [1250, 640]] });
 
     var UT = [['MSB-8', '8B · 400 A', 'MSB 8', 'D Bldg'], ['M.C.C-2', '8D · 800 A', 'MCC 2', ''],
               ['MSB-7', '8E · 250 A', 'MSB 7', 'C Bldg'], ['DB-2', '8F · 125 A', 'DB 2', 'Gen room'],
@@ -152,8 +153,9 @@ const SLD = (function () {
 
     /* ---------------- ATS-002 ---------------- */
 
-    node({ id: 'gen2', kind: 'generator', x: 2200, y: 200, w: 146, h: 122,
-           label: 'GENERATOR 2', sub: 'Caterpillar 3512 · 1360 kVA · 1640 A · 440 V',
+    node({ id: 'gen2', kind: 'generator', x: 2200, y: 200, w: 220, h: 108,
+           label: 'GENERATOR 2', sub: 'Caterpillar 3512',
+           sub2: '1360 kVA · 400 kW load bank', sub3: '1640 A · 440 V',
            note: 's/n YAY 01204, 1088 kW, 1500 rpm, plus a 400 kW load bank. ' +
                  '1640 A on the plate corresponds to 1360 kVA at 480 V rather ' +
                  'than at the 440 V also printed on it.' });
@@ -162,12 +164,12 @@ const SLD = (function () {
            label: 'ATS-002 · AUTOMATIC TRANSFER SWITCH',
            sub: 'ASCO Series 7000 · 2000 A · separate panel in ATS Room' });
 
-    node({ id: 'a2bar', kind: 'embar', x: 1900, y: 817, w: 660, h: 11,
+    node({ id: 'a2bar', kind: 'embar', x: 1900, y: 813, w: 660, h: 24,
            label: 'ATS-002 PANEL BUSBAR · 2000 A, 3P & N' });
 
     edge('ut4', 'ats2');
     edge('gen2', 'ats2', { side: 'emerg',
-          pts: [[2200, 261], [2200, 296], [2372, 296], [2372, 758], [2234, 758]] });
+          pts: [[2200, 254], [2200, 296], [2372, 296], [2372, 758], [2234, 758]] });
     edge('ats2', 'a2bar', { side: 'emerg' });
 
     var A2 = [['ATS ROOM EDB-28', 'L6 · 40 A', 'EDB 28'],
@@ -192,7 +194,7 @@ const SLD = (function () {
            label: 'RACK-K01 / K02', sub: '3-phase, from EDB-24 · 31 kW',
            note: 'Single supply and no UPS. These two racks are the exception ' +
                  'to the dual-corded arrangement everything else uses.' });
-    edge('edb24', 'k0102', { side: 'none' });
+    edge('edb24', 'k0102', { side: 'emerg' });
 
     /* ---------------- UPS chains ---------------- */
 
@@ -203,7 +205,7 @@ const SLD = (function () {
     node({ id: 'esmsb1', kind: 'board', x: 800, y: 1032, w: 600, h: 40,
            label: 'ESMSB-1 · 630 A TP MCCB incomer' });
 
-    edge('em0', 'ups1', { side: 'a' });
+    edge('em0', 'ups1', { side: 'emerg' });
     edge('ups1', 'bat1', { side: 'a' });
     edge('ups1', 'esmsb1', { side: 'a' });
 
@@ -248,25 +250,25 @@ const SLD = (function () {
 
     var ZL = 1248, ZR = 1452, PBOT = 1140;
     var ZONES = [
-        ['ZONE 1', 'PDU-1 + PDU-6', '27 racks · A / B / K', '236 kW', 750, 'pa3', 'pb0', 1164, 1164, 1536],
-        ['ZONE 2', 'PDU-3 + PDU-2', '39 racks · B / C / D / E', '254 kW', 860, 'pa2', 'pb1', 1188, 1188, 1512],
-        ['ZONE 3', 'PDU-5 + PDU-4', '14 racks · F / G', '133 kW', 970, 'pa1', 'pb2', 1212, 1212, 1488],
-        ['ZONE 4', 'PDU-7 + PDU-8', '33 racks · M / L', 'not scheduled', 1080, 'pa0', 'pb3', 1236, 1236, 1464]
+        ['ZONE 1', 'PDU-1 + PDU-6', '27 racks · A / B / K', 750, 'pa3', 'pb0', 1164, 1164, 1536],
+        ['ZONE 2', 'PDU-3 + PDU-2', '39 racks · B / C / D / E', 860, 'pa2', 'pb1', 1188, 1188, 1512],
+        ['ZONE 3', 'PDU-5 + PDU-4', '14 racks · F / G', 970, 'pa1', 'pb2', 1212, 1212, 1488],
+        ['ZONE 4', 'PDU-7 + PDU-8', '33 racks · M / L', 1080, 'pa0', 'pb3', 1236, 1236, 1464]
     ];
     ZONES.forEach(function (z, i) {
-        var y = z[4], chan = z[7], vxL = z[8], vxR = z[9];
+        var y = z[3], chan = z[6], vxL = z[7], vxR = z[8];
         node({ id: 'z' + i, kind: 'zone', x: 1350, y: y, w: 204, h: 82,
-               label: z[0], sub: z[1], sub2: z[2], sub3: z[3],
+               label: z[0], sub: z[1], sub2: z[2],
                note: 'Every rack takes one cord from ' + z[1].split(' + ')[0] +
                      ' and one from ' + z[1].split(' + ')[1] + ', on the two ' +
                      'different UPS systems, so losing either side leaves the ' +
                      'servers running.' });
 
-        var a = nodes.filter(function (n) { return n.id === z[5]; })[0];
-        var b = nodes.filter(function (n) { return n.id === z[6]; })[0];
-        edge(z[5], 'z' + i, { side: 'a',
+        var a = nodes.filter(function (n) { return n.id === z[4]; })[0];
+        var b = nodes.filter(function (n) { return n.id === z[5]; })[0];
+        edge(z[4], 'z' + i, { side: 'a',
               pts: [[a.x, PBOT], [a.x, chan], [vxL, chan], [vxL, y], [ZL, y]] });
-        edge(z[6], 'z' + i, { side: 'b',
+        edge(z[5], 'z' + i, { side: 'b',
               pts: [[b.x, PBOT], [b.x, chan], [vxR, chan], [vxR, y], [ZR, y]] });
     });
 
