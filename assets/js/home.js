@@ -4,8 +4,7 @@
 
    The figures on this page are a summary, not an assessment. Every
    number is either counted from config.js or computed from the readings
-   the sheet holds for one date, using the same arithmetic as
-   assessment.js:
+   the sheet holds for one date:
 
      Demand          coincident, PHASE BY PHASE. The transformer carries
                      the sum of the two incomers on each phase, so the
@@ -24,9 +23,12 @@
    site whose recorded peak is at 108 % - a comfortable green number
    standing in front of an exceedance.
 
-   If this page and the assessment page ever disagree, the assessment
-   page is right - it states its clause and shows its working. This one
-   links to it rather than competing with it.
+   The assessment page states its clause and shows its working, and this
+   page links to it rather than competing with it. But "the assessment
+   page is right" is not a rule to lean on: on 2026-09-09 it was found
+   summing max(A) + max(B) for the demand, which the note below says not
+   to do. Both now compute it the same way. If they disagree again, that
+   is a defect in one of them - find out which, do not assume.
 
    Nothing here is invented when the sheet is quiet. A figure that cannot
    be computed says so, and says why; it never falls back to a guess.

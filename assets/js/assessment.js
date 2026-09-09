@@ -101,17 +101,36 @@
         return n.toFixed(dp === undefined ? 0 : dp);
     }
 
-    /* R2 - Maximum Demand. With the coupler open each transformer feeds its
-       own section, so site demand is the sum of the two incomers. Data
-       centre load is continuous, so Appendix II gives no diversity relief. */
+    /* R2 - demand. With the coupler open each transformer feeds its own
+       section, so site demand is the sum of the two incomers. Data centre
+       load is continuous, so Appendix II gives no diversity relief.
+
+       Taken PHASE BY PHASE: the largest of the three phase sums, NOT
+       max(A) + max(B).
+
+       The two agree only when both incomers peak on the same phase. On
+       2026-09-07 they do not - A peaks on R at 1036 A, B peaks on B at
+       502 A - and adding those maxima gives 1538 A, a current that no
+       conductor carried. The real coincident maximum is 1533 A on B. */
     function maximumDemand() {
-        var a = maxPhase('Main|Incomer A|');
-        var b = maxPhase('Main|Incomer B|');
-        if (a === null || b === null) {
-            return { ok: false, missing: (a === null ? 'Incomer A ' : '') +
-                                         (b === null ? 'Incomer B' : '') };
+        var pa = phases('Main|Incomer A|');
+        var pb = phases('Main|Incomer B|');
+        if (pa === null || pb === null) {
+            return { ok: false, missing: (pa === null ? 'Incomer A ' : '') +
+                                         (pb === null ? 'Incomer B' : '') };
         }
-        return { ok: true, a: a, b: b, total: a + b, kva: kvaOf(a + b) };
+
+        var sr = pa[0] + pb[0], sy = pa[1] + pb[1], sb = pa[2] + pb[2];
+        var total = Math.max(sr, sy, sb);
+
+        return {
+            ok: true,
+            a: Math.max(pa[0], pa[1], pa[2]),   /* each incomer's own peak, for display */
+            b: Math.max(pb[0], pb[1], pb[2]),
+            total: total,
+            phase: total === sr ? 'R' : total === sy ? 'Y' : 'B',
+            kva: kvaOf(total)
+        };
     }
 
     /* R3 - the binding test. Double radial: EACH transformer alone must
@@ -138,7 +157,8 @@
             clause: c.std + ' cl. ' + c.clause,
             rule: 'Each transformer alone ≥ 1.15 × total Maximum Demand',
             figures: [
-                ['Total Maximum Demand', fmt(md.total) + ' A  (' + fmt(md.kva) + ' kVA)'],
+                ['Demand on this date', fmt(md.total) + ' A  (' + fmt(md.kva) + ' kVA)'
+                                        + ', coincident on ' + md.phase + ' phase'],
                 ['Required per transformer', fmt(required) + ' A'],
                 ['Capability per transformer', fmt(capability) + ' A'],
                 ['Utilisation of the limit', fmt(required / capability * 100) + ' %'],
@@ -147,7 +167,8 @@
             headroomA: ceiling - md.total,
             detail: pass
                 ? 'One transformer alone can carry the whole demand with the 15 % margin. '
-                  + fmt(ceiling - md.total) + ' A of Maximum Demand still available under this rule.'
+                  + fmt(ceiling - md.total) + ' A of demand still available under this rule, '
+                  + 'measured against THIS date.'
                 : 'Fails by ' + fmt(required - capability) + ' A. The site is already above the '
                   + 'demand at which one transformer can carry everything with the required margin.',
             note: 'The 2133 A plate figure is already the KOC-derated rating (2000 kVA × 0.8 '
@@ -360,12 +381,13 @@
         var vt = el('div', 'verdict-title',
             fails.length ? 'Does not meet KOC criteria'
             : unknowns.length ? 'Meets the criteria that could be tested'
-            : 'Meets KOC criteria');
+            : 'Meets KOC criteria on this date');
         var vs = el('div', 'verdict-sub',
             fails.length ? fails.length + ' rule' + (fails.length === 1 ? '' : 's') + ' failed: '
                 + fails.map(function (r) { return r.id; }).join(', ')
             : unknowns.length ? unknowns.length + ' could not be assessed from the readings available'
-            : 'every rule that current readings can test is satisfied');
+            : 'every rule these readings can test is satisfied — for the date shown. '
+              + 'Clause 12.4 tests the highest demand on record, which may be another day.');
         banner.appendChild(vt); banner.appendChild(vs);
 
         /* demand */
@@ -373,7 +395,7 @@
         dm.innerHTML = '';
         if (md.ok) {
             [['Incomer A', fmt(md.a) + ' A'], ['Incomer B', fmt(md.b) + ' A'],
-             ['Total Maximum Demand', fmt(md.total) + ' A'], ['', fmt(md.kva) + ' kVA at ' + V + ' V']]
+             ['Demand on this date', fmt(md.total) + ' A'], ['', fmt(md.kva) + ' kVA at ' + V + ' V']]
                 .forEach(function (p) {
                     var s = el('div', 'stat');
                     s.appendChild(el('div', 'stat-k', p[0] || 'Equivalent'));
