@@ -607,7 +607,13 @@
     var saveTimer = null;
 
     function saveDraft() {
-        var d = { meta: readMeta(), values: {} };
+        /* Without takenBy. The draft survives a sign-out; the name must not,
+           or the next reader starts with the last one's name against their
+           readings. */
+        var meta = readMeta();
+        delete meta.takenBy;
+
+        var d = { meta: meta, values: {} };
         allRows.forEach(function (row) {
             if (isDone(row)) return;
             var v = readRow(row);
@@ -638,8 +644,10 @@
         if (!d || !d.values) return 0;
 
         if (d.meta) {
+            /* Only the time. The name is never restored - see saveDraft.
+               Drafts written before that change still carry one, so this has
+               to ignore it rather than merely stop writing it. */
             if (d.meta.time && !$('fTime').value) $('fTime').value = d.meta.time;
-            if (d.meta.takenBy && !$('fBy').value) $('fBy').value = d.meta.takenBy;
         }
 
         var n = 0;
@@ -1416,6 +1424,12 @@
             $('fBy').value = remembered.name;
             unlockAs(remembered.name);
         } else {
+            /* No verification standing, so start as nobody. The browser
+               restores the select on a reload, and leaving the last person's
+               name sitting there is the very thing this is meant to prevent -
+               it invites the next reader to record under it. */
+            $('fBy').value = '';
+            $('fPin').value = '';
             lockReader('Select your name and enter your code.', '');
         }
 

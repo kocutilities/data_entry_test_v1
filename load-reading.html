@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="Load Reading">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=f525fb93">
-<script src="assets/js/auth.js?v=f525fb93"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=04524f94">
+<script src="assets/js/auth.js?v=04524f94"></script>
 <script>KOCAuth.require();</script>
 </head>
 <body>
@@ -137,7 +137,7 @@
                     <div>
                         <label for="fBy">Taken by</label>
                         <div class="by-row">
-                            <select id="fBy" required>
+                            <select id="fBy" required autocomplete="off">
                                 <option value="">Select name…</option>
                             </select>
                             <input type="password" id="fPin" inputmode="numeric"
@@ -148,7 +148,7 @@
                     </div>
                     <div>
                         <label for="fPastDate">Show readings from</label>
-                        <select id="fPastDate">
+                        <select id="fPastDate" autocomplete="off">
                             <option value="">Recorded dates…</option>
                         </select>
                         <div class="field-note" id="pastNote"></div>
@@ -269,8 +269,8 @@
     </main>
 </div>
 
-<script src="assets/js/config.js?v=f525fb93"></script>
-<script src="assets/js/load-reading.js?v=f525fb93"></script>
-<script src="assets/js/auth-ui.js?v=f525fb93"></script>
+<script src="assets/js/config.js?v=04524f94"></script>
+<script src="assets/js/load-reading.js?v=04524f94"></script>
+<script src="assets/js/auth-ui.js?v=04524f94"></script>
 </body>
 </html>

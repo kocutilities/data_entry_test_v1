@@ -41,6 +41,17 @@ const KOCAuth = (function () {
     var KEY = 'koc-dc-session';
     var HOURS = 12;                 /* a shift, not a fortnight */
 
+    /* Anything that says WHO is at this browser, cleared together whenever
+       the session ends. The reader verification on the load reading page is
+       one of these: signing out has to mean the next person starts as
+       nobody, or they inherit the last person's name against their readings.
+
+       Deliberately not listed: the unsent draft, the cached sheet status and
+       the last known date. Those describe the work and the device, not the
+       person, and throwing away a half finished round because someone signed
+       out would be its own bug. */
+    var IDENTITY_KEYS = [KEY, 'koc-dc-reader'];
+
     /* username -> { hash, name }. Hash is SHA-256 of the password, hex. */
     var USERS = {
         admin: {
@@ -107,7 +118,9 @@ const KOCAuth = (function () {
     }
 
     function signOut() {
-        try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+        IDENTITY_KEYS.forEach(function (k) {
+            try { localStorage.removeItem(k); } catch (e) { /* ignore */ }
+        });
     }
 
     function current() { return readSession(); }
