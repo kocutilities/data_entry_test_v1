@@ -361,19 +361,38 @@ SPARE_IND_SOCKET = {
 }
 
 
-# Ways whose drawn label carries BOTH "SPARE" and a cabin name. Not resolved
-# here - the drawing does not say which reading is current. The cabin name is
-# kept so a reading can still be entered, and these are reported to the user.
-AMBIGUOUS = [
-    ('PDU 1', 'Q1',  'CABIN A-01 with SPARE written beneath'),
-    ('PDU 2', 'Q1',  'SPARE CABIN C-03'),
-    ('PDU 2', 'Q2',  'SPARE CABIN C-03'),
-    ('PDU 2', 'Q3',  'SPARE CABIN C-03'),
-    ('PDU 2', 'Q11', 'SPARE CABIN C-07'),
-    ('PDU 2', 'Q42', 'SPARE CABIN E-12'),
-    ('PDU 1', 'Q51', 'CABINA05 SPARE'),
-]
-
+# Ways whose drawn label carries BOTH a cabin name and the word SPARE.
+# Resolved 2026-09-09: the user confirmed these are to read as drawn, so
+# config.js shows both parts. The word order is the drawing's own and is
+# kept - "SPARE CABIN x" where the drawing leads with SPARE, "CABIN x
+# SPARE" where it trails - since that is the only hint it gives about
+# which way the change went.
+#
+# Normalised spellings: PDU 1 writes "CABINA05" with no space, PDU 4
+# writes "CABIN H-11SPARE" with none either.
+#
+# Note PDU 5 Q36 is absent. Its pair PDU 4 Q36 is drawn "SPARE CABIN
+# I-05", but PDU 5 Q36 is drawn plainly "CABIN I-05".
+QUALIFIED_SPARE = {
+    'PDU 1': {'Q51': 'Cabin A05 SPARE'},
+    'PDU 6': {'Q51': 'Cabin A05 SPARE'},
+    'PDU 2': {'Q1': 'SPARE Cabin C-03', 'Q2': 'SPARE Cabin C-03',
+              'Q3': 'SPARE Cabin C-03', 'Q11': 'SPARE Cabin C-07',
+              'Q42': 'SPARE Cabin E-12'},
+    'PDU 3': {'Q1': 'SPARE Cabin C-03', 'Q2': 'SPARE Cabin C-03',
+              'Q3': 'SPARE Cabin C-03', 'Q11': 'SPARE Cabin C-07',
+              'Q42': 'SPARE Cabin E-12'},
+    'PDU 4': {'Q5': 'Cabin H-12 SPARE', 'Q8': 'SPARE Cabin F-01',
+              'Q28': 'SPARE Cabin H-03', 'Q30': 'SPARE Cabin H-05',
+              'Q31': 'SPARE Cabin H-05', 'Q33': 'SPARE Cabin H-08',
+              'Q36': 'SPARE Cabin I-05', 'Q48': 'Cabin G-10 SPARE',
+              'Q50': 'Cabin H-11 SPARE', 'Q64': 'Cabin H-12 SPARE'},
+    'PDU 5': {'Q5': 'Cabin H-12 SPARE', 'Q8': 'SPARE Cabin F-01',
+              'Q28': 'SPARE Cabin H-03', 'Q30': 'SPARE Cabin H-05',
+              'Q31': 'SPARE Cabin H-05', 'Q33': 'SPARE Cabin H-08',
+              'Q48': 'Cabin G-10 SPARE', 'Q50': 'Cabin H-11 SPARE',
+              'Q64': 'Cabin H-12 SPARE'},
+}
 
 if __name__ == '__main__':
     for k in sorted(PDU, key=lambda x: int(x.split()[1])):
@@ -381,3 +400,7 @@ if __name__ == '__main__':
         n3 = sum(1 for w in v if w[1] == '3')
         sp = sum(1 for w in v if not w[3])
         print('%-6s %3d ways  %2d three-phase  %2d spare' % (k, len(v), n3, sp))
+    print('')
+    print('%d spare industrial sockets, %d qualified spares'
+          % (sum(len(v) for v in SPARE_IND_SOCKET.values()),
+             sum(len(v) for v in QUALIFIED_SPARE.values())))
