@@ -131,7 +131,7 @@
         var tall = Math.min(H * 0.30, 210);
 
         cx.save();
-        cx.globalAlpha = 0.15;
+        cx.globalAlpha = 0.27;
         for (var m = 0; m < 12; m++) {
             var x = padX + slot * m + slot / 2;
             [[INC1[m], 'rgba(76,125,255,'], [INC2[m], 'rgba(139,92,246,']].forEach(function (p, k) {
@@ -148,7 +148,7 @@
             });
         }
         /* the baseline the bars stand on */
-        cx.globalAlpha = 0.12;
+        cx.globalAlpha = 0.20;
         cx.strokeStyle = '#93a1bf';
         cx.lineWidth = 1;
         cx.beginPath(); cx.moveTo(padX, base + .5); cx.lineTo(W - padX, base + .5); cx.stroke();

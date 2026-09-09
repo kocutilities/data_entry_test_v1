@@ -10,7 +10,10 @@
 <meta name="apple-mobile-web-app-title" content="KOC DC">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=7147cb1c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Audiowide&display=swap">
+<link rel="stylesheet" href="assets/css/theme.css?v=7e446276">
 <style>
 /* =============================================================
    Sign in
@@ -77,9 +80,10 @@
 .hero-org b { display: block; color: var(--text-dim); font-weight: 600; }
 
 .hero-title {
-    font-size: clamp(30px, 4.4vw, 46px);
-    line-height: 1.06; font-weight: 700; letter-spacing: -.02em;
-    color: var(--text); margin: 0 0 10px;
+    font-family: 'Audiowide', 'Segoe UI', system-ui, sans-serif;
+    font-size: clamp(24px, 3.3vw, 35px);
+    line-height: 1.24; font-weight: 400; letter-spacing: .005em;
+    color: var(--text); margin: 0 0 12px;
 }
 .hero-title span {
     display: block;
@@ -173,11 +177,11 @@
     .hero-sub  { display: none; }
     .hero-mark { margin-bottom: 16px; }
     .hero-mark img { width: 58px; }
-    .hero-title { font-size: clamp(25px, 7.4vw, 34px); }
+    .hero-title { font-size: clamp(19px, 5.6vw, 26px); }
     .login-card { padding: 24px 22px 22px; }
 }
 @media (max-height: 640px) and (max-width: 900px) {
-    .hero-title { font-size: 22px; }
+    .hero-title { font-size: 18px; }
     .hero-mark img { width: 46px; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -266,7 +270,7 @@
     </div>
 </div>
 
-<script src="assets/js/auth.js?v=7147cb1c"></script>
-<script src="assets/js/login.js?v=7147cb1c"></script>
+<script src="assets/js/auth.js?v=7e446276"></script>
+<script src="assets/js/login.js?v=7e446276"></script>
 </body>
 </html>
