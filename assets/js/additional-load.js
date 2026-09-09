@@ -1099,7 +1099,7 @@
             o.textContent = e.name + (g ? '  · backed by ' + g : '  · utility only');
             sel.appendChild(o);
         });
-        sel.value = 'PDU 1';
+        sel.value = 'EMSB 2';
 
         try { plateBasis = localStorage.getItem(DERATE_KEY) || 'frame'; } catch (e) { plateBasis = 'frame'; }
 
