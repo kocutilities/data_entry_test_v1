@@ -88,25 +88,6 @@
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent;
 }
-.hero-sub {
-    font-size: 14.5px; color: var(--text-dim); line-height: 1.65;
-    max-width: 46ch; margin: 0 0 26px;
-}
-
-/* two by two rather than three then one - the hero column is not wide
-   enough for a row of four, and a widow tile looks like a mistake */
-.hero-figs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-             gap: 10px; max-width: 340px; }
-.hero-fig {
-    border: 1px solid var(--border); background: rgba(16,24,41,.55);
-    backdrop-filter: blur(6px);
-    border-radius: 12px; padding: 10px 14px; min-width: 116px;
-}
-.hero-fig b { display: block; font-size: 19px; font-weight: 650; color: var(--text);
-              font-variant-numeric: tabular-nums; }
-.hero-fig span { font-size: 10.6px; letter-spacing: .1em; text-transform: uppercase;
-                 color: var(--text-faint); }
-
 /* ---------- the card ---------- */
 
 .login-card {
@@ -160,18 +141,10 @@
 .login-msg.ok   { background: var(--good-soft); color: var(--good);
                   border: 1px solid rgba(52,211,153,.34); }
 
-.login-foot {
-    margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border);
-    font-size: 11.5px; color: var(--text-faint); line-height: 1.6;
-}
-.login-foot b { color: var(--text-dim); font-weight: 600; }
-
 /* ---------- responsive ---------- */
 
 @media (max-width: 900px) {
     .login-wrap { grid-template-columns: 1fr; gap: 26px; max-width: 460px; }
-    .hero-figs { display: none; }
-    .hero-sub  { display: none; }
     .hero-mark { margin-bottom: 16px; }
     .hero-mark img { width: 58px; }
     .hero-title { font-size: clamp(19px, 5.6vw, 26px); }
@@ -209,19 +182,6 @@
                 <span>Power Monitoring &amp; Assessment</span>
             </h1>
 
-            <p class="hero-sub">
-                Load readings, the single line diagram, and capacity assessment
-                against KOC standards — for the 2 × 1600 kVA supply, its two
-                generators, both UPS systems and 286 live final circuits
-                across eight PDUs.
-            </p>
-
-            <div class="hero-figs">
-                <div class="hero-fig"><b>604,440</b><span>kWh last year</span></div>
-                <div class="hero-fig"><b>2 × 1600</b><span>kVA transformers</span></div>
-                <div class="hero-fig"><b>113</b><span>server cabins</span></div>
-                <div class="hero-fig"><b>286</b><span>circuits in service</span></div>
-            </div>
         </div>
 
         <!-- ---------- form ---------- -->
@@ -257,11 +217,6 @@
 
                 <div class="login-msg" id="loginMsg" role="alert" aria-live="polite"></div>
             </form>
-
-            <div class="login-foot">
-                <b>Initial setup credentials.</b> Change them before this is used
-                by anyone else — see the note in <code>auth.js</code>.
-            </div>
         </div>
 
     </div>
