@@ -216,7 +216,7 @@ const SLD = (function () {
     node({ id: 'esmsb2', kind: 'board', x: 1955, y: 1032, w: 600, h: 40,
            label: 'ESMSB-2 · 630 A TP MCCB incomer' });
 
-    edge('a2_2', 'ups2', { side: 'b' });
+    edge('a2_2', 'ups2', { side: 'emerg' });
     edge('ups2', 'bat2', { side: 'b' });
     edge('ups2', 'esmsb2', { side: 'b' });
 

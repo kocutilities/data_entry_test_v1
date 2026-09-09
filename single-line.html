@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="SLD">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=e77ada10">
+<link rel="stylesheet" href="assets/css/theme.css?v=0c848e48">
 <style>
 /* ---------- supply colours, matching the block diagram ---------- */
 :root {
@@ -93,10 +93,9 @@ html[data-theme="light"] {
 .f-b.live       { stroke: var(--sup-b); }
 .f-none.live    { stroke: var(--sup-none); }
 
-/* a measured feeder takes its loading colour */
-.flow.live.ok   { stroke: var(--good); }
-.flow.live.warn { stroke: var(--warn); }
-.flow.live.bad  { stroke: var(--bad); }
+/* Loading is shown by the figures under each box, the box tint and the
+   speed of the dashes - never by the conductor colour, which is reserved
+   for where the power comes from. */
 
 @keyframes sld-dash { to { stroke-dashoffset: -52; } }
 #sld.paused .flow.live { animation-play-state: paused; }
@@ -333,8 +332,8 @@ html[data-theme="light"] {
     </main>
 </div>
 
-<script src="assets/js/config.js?v=e77ada10"></script>
-<script src="assets/js/sld-config.js?v=e77ada10"></script>
-<script src="assets/js/sld.js?v=e77ada10"></script>
+<script src="assets/js/config.js?v=0c848e48"></script>
+<script src="assets/js/sld-config.js?v=0c848e48"></script>
+<script src="assets/js/sld.js?v=0c848e48"></script>
 </body>
 </html>
