@@ -825,10 +825,12 @@
                 + 'This is a conditional acceptance: it holds for what was checked, and the '
                 + 'unchecked items must be closed before connection.';
         } else {
-            kind = 'ok'; title = 'Accept subject to the outstanding checks';
+            kind = 'ok'; title = 'Accept on the rules tested';
             sub = 'Every rule testable from recorded currents passes'
                 + (watches.length ? ', with ' + watches.length + ' caution' + (watches.length === 1 ? '' : 's') : '')
-                + '. The items below still have to be completed before connection.';
+                + '. Checks needing inputs the reading sheet does not hold — cable capacity, '
+                + 'voltage drop, discrimination, fault level — are outside what this page '
+                + 'can judge and are not covered by this result.';
         }
         v.className = 'verdict ' + kind;
         v.appendChild(el('div', 'verdict-title', title));
@@ -915,6 +917,14 @@
 
     function renderOutstanding() {
         var os = $('outstanding');
+
+        /* The "Outstanding before connection" section was taken off the page
+           on 2026-09-09, to go back after further study. Everything below is
+           left intact and simply does not run while its container is absent -
+           restoring the section in additional-load.html is all that is needed
+           to bring it back. */
+        if (!os) return;
+
         os.innerHTML = '';
         /* Name the cables actually on this path. The drawings give the size
            but not the installation method, grouping or route, so the page

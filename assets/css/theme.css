@@ -1032,3 +1032,32 @@ body:not(.entry-locked) .lockbar { display: none; }
 .entry-locked .row-submit,
 .entry-locked .row-edit,
 .entry-locked .pdu-submit { display: none; }
+
+/* ---------- theme toggle icon ----------
+   The button carries both icons and CSS picks one, so every page gets the
+   right glyph without each page's inline theme script having to swap it.
+
+   The icon shows the theme you are switching TO, which is the usual
+   convention: a sun on the dark theme, a moon on the light one. It used to
+   be a moon in both, which read as decoration rather than a control. */
+
+#themeBtn .ico-moon { display: none; }
+#themeBtn .ico-sun  { display: block; }
+
+html[data-theme="light"] #themeBtn .ico-sun  { display: none; }
+html[data-theme="light"] #themeBtn .ico-moon { display: block; }
+
+/* ---------- the brand is the way home ----------
+   Below 620px the Reference group (and with it "Project home") is hidden to
+   keep the mobile bar to one row, which left no way back to the home page on
+   a phone. The brand is on every page and always visible, so it is the link. */
+
+a.brand { text-decoration: none; color: inherit; border-radius: 12px; }
+a.brand:hover .brand-name { color: var(--accent); }
+a.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* On a phone the badge shrinks to 32px, which is under the ~44px a thumb
+   needs. Pad the link out to a proper tap target without moving the artwork. */
+@media (pointer: coarse) {
+    a.brand { min-height: 44px; }
+}
