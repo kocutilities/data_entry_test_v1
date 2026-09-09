@@ -26,6 +26,8 @@
     var NAME_KEY  = 'koc-dc-taken-by';
     var ENDPOINT_KEY = 'koc-dc-endpoint';
     var LATEST_KEY = 'koc-dc-latest-date';
+    var CACHE_KEY = 'koc-dc-status-cache';
+    var CACHE_DATES = 3;          /* today, yesterday, and one to spare */
     /* set once the operator picks a date themselves, so a background
        correction never drags them off the date they chose */
     var dateChosenByUser = false;
@@ -824,7 +826,22 @@
             return Promise.resolve();
         }
 
-        markStatusBadge('Checking the sheet…', true);
+        /* Show what this device last saw for this date, immediately. It is
+           the same rows the sheet would return, so an Update still works -
+           the server resolves the row position from its own index, never
+           from anything sent by the page. */
+        var cached = cacheRead()[date];
+        var shownFromCache = 0;
+        if (cached && cached.recorded) {
+            shownFromCache = applyRecorded(cached.recorded);
+            loadDraft();
+            openPanelsWithWork();
+            refreshTotals();
+        }
+
+        markStatusBadge(shownFromCache
+            ? shownFromCache + ' from this device · checking the sheet…'
+            : 'Checking the sheet…', true);
 
         return post({ type: 'status', date: date })
             .then(function (d) {
@@ -851,17 +868,24 @@
                         }
                     });
                 }
-                var n = 0;
-                Object.keys(d.recorded || {}).forEach(function (key) {
-                    var row = byKey[key];
-                    if (!row) return;
-                    var hit = d.recorded[key];
-                    writeRow(row, hit.r, hit.y, hit.b);
-                    row._fromSheet = true;
-                    row._sheetRow  = hit.row;
-                    setRowState(row, 'already');
-                    n++;
-                });
+                /* The sheet is the authority. Anything painted from the cache
+                   that the sheet no longer has - deleted there, or recorded on
+                   another device and since removed - must go. */
+                if (shownFromCache) {
+                    var keep = d.recorded || {};
+                    allRows.forEach(function (row) {
+                        if (row._fromSheet && !keep[row._item.key]) {
+                            writeRow(row, '', '', '');
+                            row._fromSheet = false;
+                            row._replace   = false;
+                            row._sheetRow  = null;
+                            setRowState(row, 'pending');
+                        }
+                    });
+                }
+
+                var n = applyRecorded(d.recorded);
+                cacheWrite(date, d.recorded || {});
                 markStatusBadge(n + ' already recorded for ' + date);
                 loadDraft();
                 openPanelsWithWork();
@@ -869,13 +893,66 @@
             })
             .catch(function (e) {
                 console.error('Status check failed:', e);
-                markStatusBadge('Could not reach the sheet');
-                setStatus('err', 'Could not check what is already recorded for ' + date + ' (' +
-                                 e.message + '). You can still enter and submit — the sheet ' +
-                                 'refuses duplicates on its own.');
+                if (shownFromCache) {
+                    /* The figures on screen are this device's last copy and
+                       have NOT been confirmed. Saying so is the whole point -
+                       an unconfirmed count that looks confirmed is worse than
+                       no count at all. */
+                    markStatusBadge(shownFromCache + ' from this device · not confirmed');
+                    setStatus('warn', 'Could not reach the sheet, so what is shown for ' + date +
+                                      ' is this device\u2019s last copy and may be out of date. ' +
+                                      'You can still enter and submit \u2014 the sheet refuses ' +
+                                      'duplicates on its own.');
+                } else {
+                    markStatusBadge('Could not reach the sheet');
+                    setStatus('err', 'Could not check what is already recorded for ' + date + ' (' +
+                                     e.message + '). You can still enter and submit \u2014 the ' +
+                                     'sheet refuses duplicates on its own.');
+                }
                 loadDraft();
                 refreshTotals();
             });
+    }
+
+    /* ---------------------------------------------------------
+       a local copy of what the sheet last said
+       --------------------------------------------------------- */
+
+    function cacheRead() {
+        try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}') || {}; }
+        catch (e) { return {}; }
+    }
+
+    function cacheWrite(date, recorded) {
+        var all = cacheRead();
+        all[date] = { recorded: recorded, at: Date.now() };
+
+        /* Keep only the few most recent dates. 300 readings is around 20 kB,
+           and localStorage is not somewhere to accumulate a year of them. */
+        var dates = Object.keys(all).sort(function (a, b) {
+            return (all[b].at || 0) - (all[a].at || 0);
+        });
+        dates.slice(CACHE_DATES).forEach(function (d) { delete all[d]; });
+
+        try { localStorage.setItem(CACHE_KEY, JSON.stringify(all)); }
+        catch (e) { /* full or private mode - the page works without it */ }
+    }
+
+    /* Paint the rows from a recorded map. Used for both the cached copy and
+       the sheet's own reply, so the two can never drift apart. */
+    function applyRecorded(recorded) {
+        var n = 0;
+        Object.keys(recorded || {}).forEach(function (key) {
+            var row = byKey[key];
+            if (!row) return;
+            var hit = recorded[key];
+            writeRow(row, hit.r, hit.y, hit.b);
+            row._fromSheet = true;
+            row._sheetRow  = hit.row;
+            setRowState(row, 'already');
+            n++;
+        });
+        return n;
     }
 
     /**
