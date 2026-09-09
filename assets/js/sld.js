@@ -48,6 +48,15 @@
     function route(a, b, e) {
         var A = box(a), B = box(b);
 
+        /* An explicit orthogonal run set out in sld-config. Used where the
+           generic router cannot know the right answer: the PDU-to-zone cords,
+           which have to nest so they never cross, and the two generator feeds,
+           which are taken around the outside of the switchboard rather than
+           through its busbars. */
+        if (e && e.pts) {
+            return 'M' + e.pts.map(function (p) { return p[0] + ' ' + p[1]; }).join(' L');
+        }
+
         /* generators and battery banks sit beside what they serve */
         if (a.kind === 'generator' || b.kind === 'battery') {
             var x1 = a.x < b.x ? A.r : A.l;
