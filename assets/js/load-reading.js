@@ -427,7 +427,8 @@
             toggle.addEventListener('click', function () { panel.classList.toggle('open'); });
             head.appendChild(toggle);
 
-            head.appendChild(el('span', 'pill pdu-progress', '0 / ' + circuits.length + ' recorded'));
+            var activeWays = circuits.filter(function (c) { return !isSpare(c.rack); }).length;
+            head.appendChild(el('span', 'pill pdu-progress', '0 / ' + activeWays + ' recorded'));
 
             var sub = el('button', 'btn-sm pdu-submit');
             sub.type = 'button';
@@ -477,18 +478,33 @@
        totals
        --------------------------------------------------------- */
 
-    function pduTotal() {
-        var n = 0;
-        Object.keys(DC_CONFIG.pduCircuits).forEach(function (k) { n += DC_CONFIG.pduCircuits[k].length; });
-        return n;
+    /* A spare is any way whose label carries the word, however the drawing
+       qualifies it - "SPARE", "SPARE IND. SOCKET", "SPARE Cabin C-03",
+       "Cabin G-10 SPARE". None of them is a circuit anyone goes out to read,
+       so counting them in the target only ever made the day look unfinished. */
+    function isSpare(rack) {
+        return /SPARE/i.test(rack || '');
     }
 
+    function pduCounts() {
+        var active = 0, spare = 0;
+        Object.keys(DC_CONFIG.pduCircuits).forEach(function (k) {
+            DC_CONFIG.pduCircuits[k].forEach(function (c) {
+                if (isSpare(c.rack)) spare++; else active++;
+            });
+        });
+        return { active: active, spare: spare, total: active + spare };
+    }
+    function pduTotal() { return pduCounts().total; }
+
     function refreshTotals() {
-        var recMain = 0, recPdu = 0, pending = 0, flagged = 0, inFlight = 0;
+        var recMain = 0, recPdu = 0, recPduSpare = 0, pending = 0, flagged = 0, inFlight = 0;
 
         allRows.forEach(function (row) {
             if (isDone(row)) {
-                if (row._item.category === 'Main') recMain++; else recPdu++;
+                if (row._item.category === 'Main') recMain++;
+                else if (isSpare(row._item.rack)) recPduSpare++;
+                else recPdu++;
             } else if (row._state === 'sending') {
                 /* in flight - neither recorded nor still to send. Leaving it
                    out of the count is what disables the submit buttons for the
@@ -507,17 +523,24 @@
         });
 
         $('statMain').textContent    = recMain + ' / ' + DC_CONFIG.equipment.length;
-        $('statPdu').textContent     = recPdu + ' / ' + pduTotal();
+        var pc = pduCounts();
+        $('statPdu').textContent = recPdu + ' / ' + pc.active;
+        $('statPduSpare').textContent = 'Spare ' + pc.spare
+            + (recPduSpare ? '  ·  ' + recPduSpare + ' recorded' : '');
         $('statPending').textContent = inFlight ? 'saving…' : pending;
         $('statFlag').textContent    = flagged;
 
         document.querySelectorAll('.pdu').forEach(function (panel) {
             var rows = panel.querySelectorAll('.row');
-            var done = 0;
-            rows.forEach(function (r) { if (isDone(r)) done++; });
+            var done = 0, active = 0;
+            rows.forEach(function (r) {
+                if (isSpare(r._item && r._item.rack)) return;
+                active++;
+                if (isDone(r)) done++;
+            });
             var pill = panel.querySelector('.pdu-progress');
-            pill.textContent = done + ' / ' + rows.length + ' recorded';
-            pill.className = 'pill pdu-progress' + (done === 0 ? '' : done === rows.length ? ' ok' : ' warn');
+            pill.textContent = done + ' / ' + active + ' recorded';
+            pill.className = 'pill pdu-progress' + (done === 0 ? '' : done === active ? ' ok' : ' warn');
 
             var n = pendingIn(panel).length;
             var sub = panel.querySelector('.pdu-submit');
@@ -914,6 +937,29 @@
        start
        --------------------------------------------------------- */
 
+    /* The most recent date the sheet holds anything for. Opening there rather
+       than on today lets a part-finished round be picked up where it was left.
+       Note this IS the date every submit is stamped with, so starting a fresh
+       round means setting it forward first - the field is at the top of the
+       form and the status line always names the date in use. */
+    function latestDate() {
+        if (!endpointUrl()) return Promise.resolve(null);
+        var to = new Date();
+        var from = new Date();
+        from.setFullYear(from.getFullYear() - 6);
+        return fetch(endpointUrl(), {
+            method: 'POST',
+            body: JSON.stringify({ type: 'history',
+                                   from: from.toISOString().slice(0, 10),
+                                   to: to.toISOString().slice(0, 10) })
+        })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                return (d && d.result === 'success' && d.cover) ? d.cover.last : null;
+            })
+            .catch(function () { return null; });
+    }
+
     function init() {
         var now = new Date();
         $('fDate').value = now.toISOString().slice(0, 10);
@@ -1066,7 +1112,10 @@
         window.addEventListener('orientationchange', function () { setTimeout(fitBar, 250); });
 
         refreshTotals();
-        loadStatusForDate();
+        latestDate().then(function (d) {
+            if (d) $('fDate').value = d;
+            loadStatusForDate();
+        });
     }
 
     if (document.readyState === 'loading') {
