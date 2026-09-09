@@ -6,33 +6,284 @@
 <title>KOC Data Center — Electrical Records</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=04524f94">
-<script src="assets/js/auth.js?v=04524f94"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=33d65fed">
+<script src="assets/js/auth.js?v=33d65fed"></script>
 <script>KOCAuth.require();</script>
 <style>
-    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
-
-    .card {
-        display: block;
-        text-decoration: none;
-        color: inherit;
-        background: var(--surface);
+    /* ---------- hero ---------- */
+    .hero {
+        position: relative;
+        overflow: hidden;
         border: 1px solid var(--border);
         border-radius: var(--radius);
+        background:
+            radial-gradient(900px 260px at 82% -30%, rgba(139,92,246,.20), transparent 70%),
+            radial-gradient(700px 240px at 8% -20%, rgba(76,125,255,.24), transparent 70%),
+            var(--surface);
         box-shadow: var(--shadow);
-        padding: 20px 22px;
-        transition: border-color .15s, transform .12s;
+        padding: 26px 28px 24px;
+        margin-bottom: 18px;
     }
 
+    /* The faint grid behind the hero - decoration, drawn with a gradient
+       rather than an image so it costs nothing and follows the theme. */
+    .hero::after {
+        content: '';
+        position: absolute; inset: 0;
+        background-image:
+            linear-gradient(var(--border) 1px, transparent 1px),
+            linear-gradient(90deg, var(--border) 1px, transparent 1px);
+        background-size: 46px 46px;
+        opacity: .5;
+        mask-image: linear-gradient(105deg, transparent 38%, #000 100%);
+        -webkit-mask-image: linear-gradient(105deg, transparent 38%, #000 100%);
+        pointer-events: none;
+    }
+
+    .hero > * { position: relative; z-index: 1; }
+
+    .hero h1 {
+        margin: 0 0 6px;
+        font-size: 30px;
+        font-weight: 680;
+        letter-spacing: -.6px;
+    }
+
+    .hero-line { margin: 0; font-size: 13.4px; color: var(--text-dim); }
+    /* nowrap so a narrow screen never breaks a date at its hyphens */
+    .hero-line b { color: var(--text); font-weight: 600; white-space: nowrap; }
+
+    .hero-meta {
+        display: flex; flex-wrap: wrap; gap: 8px 18px;
+        margin-top: 16px; font-size: 12.6px; color: var(--text-faint);
+    }
+    .hero-meta > span { display: inline-flex; align-items: center; gap: 7px; }
+    .hero-meta i {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: var(--accent); flex: 0 0 6px;
+    }
+    .hero-meta i.v2 { background: var(--accent-2); }
+
+    /* ---------- section heads ---------- */
+    .sec-head {
+        display: flex; align-items: baseline; gap: 12px;
+        margin: 26px 2px 12px;
+    }
+    .sec-head h2 {
+        margin: 0; font-size: 13px; font-weight: 640;
+        letter-spacing: .10em; text-transform: uppercase;
+        color: var(--text-faint);
+    }
+    .sec-head .live-note { margin-left: auto; font-size: 12.2px; text-align: right; }
+
+    .live-note { color: var(--text-faint); }
+    .live-note.ok   { color: var(--good); }
+    .live-note.warn { color: var(--warn); }
+
+    /* ---------- KPI tiles ---------- */
+    .kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+        gap: 14px;
+    }
+
+    .kpi {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px 18px 15px;
+        box-shadow: var(--shadow);
+    }
+
+    .kpi-label {
+        font-size: 11.4px; font-weight: 620; letter-spacing: .085em;
+        text-transform: uppercase; color: var(--text-faint);
+        margin-bottom: 9px;
+    }
+
+    .kpi-value {
+        font-size: 26px; font-weight: 660; letter-spacing: -.5px;
+        line-height: 1.1; font-variant-numeric: tabular-nums;
+    }
+    .kpi-value.good { color: var(--good); }
+    .kpi-value.warn { color: var(--warn); }
+    .kpi-value.bad  { color: var(--bad); }
+
+    .kpi-sub {
+        margin-top: 7px; font-size: 12.2px; line-height: 1.45;
+        color: var(--text-dim); min-height: 2.6em;
+    }
+
+    /* ---------- panels ---------- */
+    .panel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 20px 22px;
+    }
+
+    /* ---------- capacity ladder ---------- */
+    .cap-top {
+        display: flex; align-items: baseline; gap: 10px;
+        flex-wrap: wrap; margin-bottom: 18px;
+    }
+    .cap-top h3 { margin: 0; font-size: 14.5px; font-weight: 620; }
+    .cap-reading {
+        margin-left: auto; font-size: 13px; color: var(--text-dim);
+        font-variant-numeric: tabular-nums;
+    }
+
+    .cap-track {
+        position: relative; height: 26px;
+        border-radius: 7px; background: var(--surface-3);
+    }
+
+    .cap-fill {
+        height: 100%; width: 0;
+        border-radius: 7px 3px 3px 7px;
+        background: linear-gradient(90deg, var(--accent), var(--accent-2));
+        transition: width .55s cubic-bezier(.2,.7,.3,1);
+    }
+    .cap-fill.over { background: linear-gradient(90deg, var(--warn), var(--bad)); }
+
+    .cap-mark {
+        position: absolute; top: -5px; bottom: -5px;
+        width: 2px; background: var(--bad); border-radius: 2px;
+    }
+    .cap-mark::after {
+        content: ''; position: absolute; left: -3px; top: -3px;
+        width: 8px; height: 8px; border-radius: 50%; background: var(--bad);
+    }
+
+    .cap-scale {
+        position: relative; height: 18px; margin-top: 10px;
+        font-size: 11.6px; color: var(--text-faint);
+        font-variant-numeric: tabular-nums;
+    }
+    .cap-scale span { position: absolute; white-space: nowrap; }
+    .cap-scale .zero  { left: 0; }
+    .cap-scale .plate { right: 0; }
+
+    /* The ceiling is named here rather than floated over the track at its own
+       position: at 87 % of the width its label lands on top of the plate
+       figure on a narrow screen. The marker still shows where it falls. */
+    .cap-legend {
+        display: flex; align-items: center; gap: 8px;
+        margin-top: 4px; font-size: 11.8px; color: var(--text-faint);
+        font-variant-numeric: tabular-nums;
+    }
+    .cap-legend .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--bad); flex: 0 0 8px;
+    }
+
+    .cap-foot {
+        margin: 18px 0 0; font-size: 12.4px; line-height: 1.55;
+        color: var(--text-dim);
+    }
+    .cap-foot a { color: var(--accent); text-decoration: none; white-space: nowrap; }
+    .cap-foot a:hover { text-decoration: underline; }
+
+    /* ---------- incomer phase bars ---------- */
+    .incomers { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .incomer-head {
+        display: flex; align-items: baseline; gap: 10px; margin-bottom: 15px;
+    }
+    .incomer-head h3 { margin: 0; font-size: 14.5px; font-weight: 620; }
+    .incomer-head .src { font-size: 12px; color: var(--text-faint); }
+    .incomer-unbal {
+        margin-left: auto; font-size: 12px; color: var(--text-faint);
+        font-variant-numeric: tabular-nums;
+    }
+    .incomer-unbal.warn { color: var(--warn); }
+
+    .ph-row {
+        display: grid; grid-template-columns: 16px 1fr 66px;
+        align-items: center; gap: 10px; margin-bottom: 9px;
+    }
+    .ph-row:last-child { margin-bottom: 0; }
+
+    .ph-tag {
+        font-size: 11.5px; font-weight: 680; text-align: center;
+        color: var(--text-faint);
+    }
+
+    .ph-track {
+        height: 9px; border-radius: 5px;
+        background: var(--surface-3); overflow: hidden;
+    }
+    .ph-fill {
+        height: 100%; width: 0; border-radius: 5px;
+        transition: width .55s cubic-bezier(.2,.7,.3,1);
+    }
+    .ph-fill.r { background: #f87171; }
+    .ph-fill.y { background: #fbbf24; }
+    .ph-fill.b { background: #60a5fa; }
+
+    .ph-val {
+        font-size: 12.4px; text-align: right; color: var(--text-dim);
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* ---------- navigation cards ---------- */
+    .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 14px;
+    }
+
+    .card {
+        display: block; text-decoration: none; color: inherit;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: var(--shadow);
+        padding: 18px 20px;
+        transition: border-color .15s, transform .12s;
+    }
     a.card:hover { border-color: rgba(76,125,255,.42); transform: translateY(-2px); }
 
-    .card.pending { opacity: .58; }
+    .card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+    .card-top svg.i { width: 19px; height: 19px; flex: 0 0 19px; stroke: var(--accent); }
+    .card h3 { margin: 0; font-size: 15px; font-weight: 620; }
+    .card-top .go {
+        margin-left: auto; width: 15px; height: 15px; flex: 0 0 15px;
+        stroke: var(--text-faint); transition: stroke .15s, transform .15s;
+    }
+    a.card:hover .go { stroke: var(--accent); transform: translateX(3px); }
+    .card p { margin: 0; font-size: 12.9px; color: var(--text-dim); line-height: 1.5; }
 
-    .card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-    .card-top svg.i { width: 20px; height: 20px; flex: 0 0 20px; stroke: var(--accent); }
-    .card h3 { margin: 0; font-size: 15.5px; font-weight: 620; }
-    .card p { margin: 0; font-size: 13.2px; color: var(--text-dim); line-height: 1.5; }
-    .card .tag { margin-left: auto; }
+    /* ---------- sources ---------- */
+    .sources {
+        margin-top: 26px;
+        border-top: 1px solid var(--border);
+        padding-top: 14px;
+    }
+    .sources summary {
+        cursor: pointer; font-size: 12.2px; color: var(--text-faint);
+        list-style: none; display: inline-flex; align-items: center; gap: 7px;
+    }
+    .sources summary::-webkit-details-marker { display: none; }
+    .sources summary::before { content: '\25B8'; font-size: 10px; transition: transform .15s; }
+    .sources[open] summary::before { transform: rotate(90deg); }
+    .sources summary:hover { color: var(--text-dim); }
+    .sources dl {
+        margin: 12px 0 0; font-size: 12.2px; line-height: 1.6;
+        color: var(--text-dim);
+        display: grid; grid-template-columns: auto 1fr; gap: 4px 18px;
+    }
+    .sources dt { color: var(--text-faint); white-space: nowrap; }
+    .sources dd { margin: 0; }
+
+    @media (max-width: 760px) {
+        .hero { padding: 22px 20px 20px; }
+        .hero h1 { font-size: 25px; }
+        .incomers { grid-template-columns: 1fr; }
+        .sec-head { flex-wrap: wrap; }
+        .sec-head .live-note { margin-left: 0; width: 100%; text-align: left; }
+    }
 </style>
 </head>
 <body>
@@ -80,24 +331,13 @@
                 <svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                 <span>Sign out <em id="whoAmI"></em></span>
             </button>
-            <div class="side-card">
-                <b>Independent project</b><br>
-                Self-contained. Shares no code or data with the
-                Substation web page.
-            </div>
         </div>
     </aside>
 
     <main class="main">
         <div class="wrap">
             <div class="topbar">
-                <div>
-                    <h1 class="page-title">KOC Data Center</h1>
-                    <p class="page-sub">
-                        Electrical records for Data Center No. 1 — load readings now, system
-                        assessment and additional-load studies to follow.
-                    </p>
-                </div>
+                <div></div>
                 <div class="topbar-actions">
                     <button id="themeBtn" class="icon-btn" type="button" aria-label="Switch theme">
                         <svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -105,14 +345,145 @@
                 </div>
             </div>
 
+            <section class="hero">
+                <h1>KOC Data Center</h1>
+                <p class="hero-line">
+                    Power Monitoring &amp; Assessment &mdash; last reading
+                    <b id="readingDate">&mdash;</b>, <b id="readingCount">&mdash;</b> circuits recorded
+                </p>
+                <div class="hero-meta">
+                    <span><i></i><span id="sysLine">&nbsp;</span></span>
+                    <span><i class="v2"></i><span id="plantLine">&nbsp;</span></span>
+                </div>
+            </section>
+
+            <div class="sec-head">
+                <h2>Present loading</h2>
+                <span id="mdSource" class="live-note">Reading the sheet&hellip;</span>
+            </div>
+
+            <div class="kpis">
+                <div class="kpi">
+                    <div class="kpi-label">Maximum demand</div>
+                    <div id="kpiDemand" class="kpi-value">&mdash;</div>
+                    <div id="kpiDemandSub" class="kpi-sub"></div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Contingency utilisation</div>
+                    <div id="kpiUtil" class="kpi-value">&mdash;</div>
+                    <div id="kpiUtilSub" class="kpi-sub"></div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Headroom for new load</div>
+                    <div id="kpiHead" class="kpi-value">&mdash;</div>
+                    <div id="kpiHeadSub" class="kpi-sub"></div>
+                </div>
+                <div class="kpi">
+                    <div class="kpi-label">Circuits monitored</div>
+                    <div id="kpiCircuits" class="kpi-value">&mdash;</div>
+                    <div id="kpiCircuitsSub" class="kpi-sub"></div>
+                </div>
+            </div>
+
+            <div class="sec-head">
+                <h2>Transformer capacity</h2>
+            </div>
+
+            <div class="panel">
+                <div class="cap-top">
+                    <h3>Demand against one transformer</h3>
+                    <span id="capReading" class="cap-reading"></span>
+                </div>
+
+                <div id="capTrack" class="cap-track">
+                    <div id="capFill" class="cap-fill"></div>
+                    <div id="capCeilMark" class="cap-mark" style="left:87%"></div>
+                </div>
+
+                <div class="cap-scale">
+                    <span class="zero">0 A</span>
+                    <span id="capPlateLabel" class="plate">&mdash;</span>
+                </div>
+
+                <div class="cap-legend">
+                    <span class="dot"></span>
+                    <span id="capCeilLabel">&mdash;</span>
+                </div>
+
+                <p class="cap-foot">
+                    The coupler is normally open and interlocked, so the binding case is the loss
+                    of one transformer: the survivor must carry the whole demand with a 15&nbsp;%
+                    margin (KOC-E-003 Pt&nbsp;1 cl.&nbsp;12.4). The gap between the bar and the
+                    marker is the demand still available.
+                    <a href="assessment.html">Full assessment &rarr;</a>
+                </p>
+            </div>
+
+            <div class="sec-head">
+                <h2>Incomer balance</h2>
+            </div>
+
+            <div class="incomers">
+                <div class="panel">
+                    <div class="incomer-head">
+                        <h3>Incomer A</h3>
+                        <span class="src">TR-A via ACB-4</span>
+                        <span id="inAUnbal" class="incomer-unbal"></span>
+                    </div>
+                    <div class="ph-row">
+                        <div class="ph-tag">R</div>
+                        <div class="ph-track"><div id="inAR" class="ph-fill r"></div></div>
+                        <div id="inARVal" class="ph-val">&mdash;</div>
+                    </div>
+                    <div class="ph-row">
+                        <div class="ph-tag">Y</div>
+                        <div class="ph-track"><div id="inAY" class="ph-fill y"></div></div>
+                        <div id="inAYVal" class="ph-val">&mdash;</div>
+                    </div>
+                    <div class="ph-row">
+                        <div class="ph-tag">B</div>
+                        <div class="ph-track"><div id="inAB" class="ph-fill b"></div></div>
+                        <div id="inABVal" class="ph-val">&mdash;</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="incomer-head">
+                        <h3>Incomer B</h3>
+                        <span class="src">TR-B via ACB-3</span>
+                        <span id="inBUnbal" class="incomer-unbal"></span>
+                    </div>
+                    <div class="ph-row">
+                        <div class="ph-tag">R</div>
+                        <div class="ph-track"><div id="inBR" class="ph-fill r"></div></div>
+                        <div id="inBRVal" class="ph-val">&mdash;</div>
+                    </div>
+                    <div class="ph-row">
+                        <div class="ph-tag">Y</div>
+                        <div class="ph-track"><div id="inBY" class="ph-fill y"></div></div>
+                        <div id="inBYVal" class="ph-val">&mdash;</div>
+                    </div>
+                    <div class="ph-row">
+                        <div class="ph-tag">B</div>
+                        <div class="ph-track"><div id="inBB" class="ph-fill b"></div></div>
+                        <div id="inBBVal" class="ph-val">&mdash;</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sec-head">
+                <h2>Records</h2>
+            </div>
+
             <div class="cards">
                 <a class="card" href="load-reading.html">
                     <div class="card-top">
                         <svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
                         <h3>Load Reading</h3>
+                        <svg class="go" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                     </div>
                     <p>
-                        R, Y and B phase currents for 26 incomers and boards, plus every
+                        R, Y and B phase currents for the incomers and boards, plus every
                         outgoing breaker on PDU&nbsp;1 to PDU&nbsp;8. Saves to a Google Sheet.
                     </p>
                 </a>
@@ -121,11 +492,12 @@
                     <div class="card-top">
                         <svg class="i" viewBox="0 0 24 24"><path d="M4 4v6h16V4M4 14v6h16v-6M12 10v4"/></svg>
                         <h3>Single Line Diagram</h3>
+                        <svg class="go" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                     </div>
                     <p>
-                        Transformers, generators, ATSs, the LT board and both UPS chains
-                        down to the cabins &mdash; with the current flow animated from the
-                        readings recorded for a chosen date.
+                        Transformers, generators, ATSs, the LT board and both UPS chains down to
+                        the cabins &mdash; with the current flow animated from the readings
+                        recorded for a chosen date.
                     </p>
                 </a>
 
@@ -133,6 +505,7 @@
                     <div class="card-top">
                         <svg class="i" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 5-7"/></svg>
                         <h3>Power System Assessment</h3>
+                        <svg class="go" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                     </div>
                     <p>
                         The recorded currents judged against the KOC criteria &mdash; transformer
@@ -145,6 +518,7 @@
                     <div class="card-top">
                         <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                         <h3>Additional Load Study</h3>
+                        <svg class="go" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
                     </div>
                     <p>
                         A proposed load run through the KOC assessment sequence &mdash; transformer
@@ -154,10 +528,21 @@
                 </a>
             </div>
 
-            <p class="footnote">
-                Equipment list taken from the Computer Centre single line diagram, issue
-                06-09-26. PDU way numbers and rack names from the data centre load schedule.
-            </p>
+            <details class="sources">
+                <summary>Data sources</summary>
+                <dl>
+                    <dt>Equipment list</dt>
+                    <dd>Computer Centre single line diagram EI-CC-S/S-001, issue 06-09-26</dd>
+                    <dt>PDU circuits</dt>
+                    <dd>PDU-01 to PDU-08 single line diagrams; rack names from the data centre load schedule</dd>
+                    <dt>Transformer rating</dt>
+                    <dd>ELIN nameplate, serial 1.538710 &mdash; 84 A HV / 2133 A LV</dd>
+                    <dt>Assessment criteria</dt>
+                    <dd>KOC-E-003 Part 1 Rev 4, KOC-E-005 Rev 1, KOC-E-007 Rev 1, KOC-E-008 Rev 6</dd>
+                    <dt>Readings</dt>
+                    <dd>Entered on the Load Reading page, held in the connected Google Sheet</dd>
+                </dl>
+            </details>
         </div>
     </main>
 </div>
@@ -178,6 +563,10 @@
     });
 })();
 </script>
-<script src="assets/js/auth-ui.js?v=04524f94"></script>
+<script src="assets/js/config.js?v=33d65fed"></script>
+<script src="assets/js/koc-criteria.js?v=33d65fed"></script>
+<script src="assets/js/system-model.js?v=33d65fed"></script>
+<script src="assets/js/home.js?v=33d65fed"></script>
+<script src="assets/js/auth-ui.js?v=33d65fed"></script>
 </body>
 </html>
