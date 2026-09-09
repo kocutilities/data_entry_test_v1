@@ -179,7 +179,7 @@
             $('capFill').className = 'cap-fill';
             $('capReading').textContent = '';
             if (nowMark) nowMark.hidden = true;
-            if (nowLabel) nowLabel.textContent = '';
+            if (nowLabel) { nowLabel.textContent = ''; nowLabel.parentElement.hidden = true; }
             return;
         }
 
@@ -193,9 +193,11 @@
                 nowMark.hidden = false;
                 nowMark.style.left = Math.min(100, d.total / TX.ratedA * 100).toFixed(2) + '%';
                 nowLabel.textContent = num(d.total) + ' A — latest reading';
+                nowLabel.parentElement.hidden = false;
             } else {
                 nowMark.hidden = true;
                 nowLabel.textContent = '';
+                nowLabel.parentElement.hidden = true;
             }
         }
     }
