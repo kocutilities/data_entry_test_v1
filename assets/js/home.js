@@ -7,7 +7,7 @@
    the sheet holds for one date, using the same arithmetic as
    assessment.js:
 
-     Maximum Demand  coincident, PHASE BY PHASE. The transformer carries
+     Demand          coincident, PHASE BY PHASE. The transformer carries
                      the sum of the two incomers on each phase, so the
                      demand is max(Ar+Br, Ay+By, Ab+Bb). Summing the two
                      maxima instead would invent a current that no
@@ -15,6 +15,14 @@
      Contingency     KOC-E-003 Pt 1 cl. 12.4. Double radial: each
                      transformer alone must carry 1.15 x the whole
                      demand, which puts the site ceiling at 2133 / 1.15.
+
+   ONE READING IS NOT THE MAXIMUM DEMAND. Clause 12.4 bites on the peak,
+   not on whatever happened to be flowing the last time somebody walked
+   the room. The latest reading and the highest on record are therefore
+   shown as two separate figures, and the contingency test is applied to
+   the PEAK. Showing only the latest would have reported 83 % against a
+   site whose recorded peak is at 108 % - a comfortable green number
+   standing in front of an exceedance.
 
    If this page and the assessment page ever disagree, the assessment
    page is right - it states its clause and shows its working. This one
@@ -151,9 +159,10 @@
     }
 
     /* The capacity graphic. One track from zero to the transformer plate
-       figure, the demand filled in, and the contingency ceiling marked on
-       it - so the gap between the fill and the marker IS the headroom. */
-    function paintCapacity(d) {
+       figure. The bar is filled to the PEAK on record, because that is the
+       demand clause 12.4 tests; the latest reading is marked separately so
+       the two are never mistaken for each other. */
+    function paintCapacity(d, peak) {
         if (!$('capTrack')) return;
 
         $('capCeilMark').style.left = (CEIL / TX.ratedA * 100).toFixed(2) + '%';
@@ -161,20 +170,35 @@
                                         'can carry with the 15 % margin';
         $('capPlateLabel').textContent = num(TX.ratedA) + ' A plate';
 
-        if (!d || !d.ok) {
+        var nowMark = $('capNowMark'), nowLabel = $('capNowLabel');
+
+        if (!peak) {
             $('capFill').style.width = '0%';
             $('capFill').className = 'cap-fill';
             $('capReading').textContent = '';
+            if (nowMark) nowMark.hidden = true;
+            if (nowLabel) nowLabel.textContent = '';
             return;
         }
 
-        var over = d.total > CEIL;
-        $('capFill').style.width = Math.min(100, d.total / TX.ratedA * 100).toFixed(2) + '%';
-        $('capFill').className = 'cap-fill' + (over ? ' over' : '');
-        $('capReading').textContent = num(d.total) + ' A on ' + d.phase + ' phase';
+        $('capFill').style.width = Math.min(100, peak.max / TX.ratedA * 100).toFixed(2) + '%';
+        $('capFill').className = 'cap-fill' + (peak.max > CEIL ? ' over' : '');
+        $('capReading').textContent = 'peak ' + num(peak.max) + ' A on ' +
+                                      peak.maxPhase + ' phase, ' + ymd(peak.maxDate);
+
+        if (nowMark && nowLabel) {
+            if (d && d.ok) {
+                nowMark.hidden = false;
+                nowMark.style.left = Math.min(100, d.total / TX.ratedA * 100).toFixed(2) + '%';
+                nowLabel.textContent = num(d.total) + ' A — latest reading';
+            } else {
+                nowMark.hidden = true;
+                nowLabel.textContent = '';
+            }
+        }
     }
 
-    function paint(recorded, date, source, tone) {
+    function paint(recorded, date, source, tone, peak) {
         var d = demandOf(recorded);
 
         $('mdSource').textContent = source;
@@ -183,26 +207,36 @@
         if (d.ok) {
             setTile('kpiDemand', num(d.total) + ' A',
                     num(d.kva) + ' kVA coincident, on ' + d.phase + ' phase');
-
-            var t = d.util > 100 ? 'bad' : d.util > 90 ? 'warn' : 'good';
-            setTile('kpiUtil', num(d.util) + ' %',
-                    num(d.required) + ' A needed of ' + num(TX.ratedA) + ' A per transformer', t);
-
-            setTile('kpiHead',
-                    (d.headroom >= 0 ? num(d.headroom) : '−' + num(-d.headroom)) + ' A',
-                    d.headroom >= 0
-                        ? num(kvaOf(d.headroom)) + ' kVA before the ' + num(CEIL) + ' A ceiling'
-                        : 'already above the ' + num(CEIL) + ' A ceiling',
-                    d.headroom >= 0 ? '' : 'bad');
         } else {
             setTile('kpiDemand', '—', 'No reading for ' + d.missing + ' on ' + ymd(date));
-            setTile('kpiUtil',   '—', 'Needs both incomers');
-            setTile('kpiHead',   '—', 'Needs both incomers');
+        }
+
+        /* The contingency test runs on the peak, never on the latest reading.
+           Until the history is in, say so rather than showing a figure that
+           would be read as the answer. */
+        if (peak) {
+            var util = RULE.value * peak.max / TX.ratedA * 100;
+            var head = CEIL - peak.max;
+
+            setTile('kpiPeak', num(peak.max) + ' A',
+                    ymd(peak.maxDate) + ', on ' + peak.maxPhase + ' phase · ' +
+                    peak.n + ' reading' + (peak.n === 1 ? '' : 's') + ' on record');
+
+            setTile('kpiUtil', num(util) + ' %',
+                    head >= 0
+                        ? num(head) + ' A of demand still available below the ' +
+                          num(CEIL) + ' A ceiling'
+                        : num(-head) + ' A above the ' + num(CEIL) + ' A ceiling — ' +
+                          'a deviation is required for the peak',
+                    util > 100 ? 'bad' : util > 90 ? 'warn' : 'good');
+        } else {
+            setTile('kpiPeak', '—', 'Reading the history…');
+            setTile('kpiUtil', '—', 'Needs the reading history');
         }
 
         phaseBars('inA', d.a, TX.ratedA);
         phaseBars('inB', d.b, TX.ratedA);
-        paintCapacity(d);
+        paintCapacity(d, peak);
 
         $('readingDate').textContent  = ymd(date);
         $('readingCount').textContent = num(Object.keys(recorded || {}).length);
@@ -211,11 +245,11 @@
     /* Nothing to show, and an honest reason why. */
     function blank(reason, tone) {
         setTile('kpiDemand', '—', '');
+        setTile('kpiPeak',   '—', '');
         setTile('kpiUtil',   '—', '');
-        setTile('kpiHead',   '—', '');
         phaseBars('inA', null, TX.ratedA);
         phaseBars('inB', null, TX.ratedA);
-        paintCapacity(null);
+        paintCapacity(null, null);
         $('readingDate').textContent  = '—';
         $('readingCount').textContent = '—';
         $('mdSource').textContent = reason;
@@ -236,6 +270,23 @@
 
     function knownLatest() {
         try { return localStorage.getItem(LATEST_KEY) || ''; } catch (e) { return ''; }
+    }
+
+    /* The whole reading history, for the peak. Six years back covers every
+       date the sheet holds; the server returns the statistics, not the rows. */
+    function askHistory() {
+        var to = new Date().toISOString().slice(0, 10);
+        var from = new Date();
+        from.setFullYear(from.getFullYear() - 10);
+        return fetch(endpointUrl(), {
+            method: 'POST', body: JSON.stringify({ type: 'history',
+                from: from.toISOString().slice(0, 10), to: to })
+        })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(function (d) {
+                if (!d || d.result !== 'success') throw new Error('Unexpected reply');
+                return d;
+            });
     }
 
     function ask(date) {
@@ -261,8 +312,21 @@
            the two seconds the sheet takes, and label it as unconfirmed. */
         var date = knownLatest() || new Date().toISOString().slice(0, 10);
         var cached = cachedFor(date);
-        if (cached) paint(cached, date, 'From this device · checking the sheet…', 'warn');
+        if (cached) paint(cached, date, 'From this device · checking the sheet…', 'warn', null);
         else blank('Reading the sheet…', '');
+
+        /* Both questions at once - "what was read last" and "what is the
+           highest ever read" - rather than one after the other. */
+        var peak = null;
+        var history = askHistory()
+            .then(function (h) {
+                peak = h.demand;      /* null until two incomers share a date */
+                return h;
+            })
+            .catch(function (e) {
+                console.error('History failed:', e);
+                return null;
+            });
 
         ask(date)
             .then(function (d) {
@@ -272,16 +336,22 @@
                 if (d.latest && d.latest !== date) {
                     try { localStorage.setItem(LATEST_KEY, d.latest); } catch (e) { /* ignore */ }
                     return ask(d.latest).then(function (d2) {
-                        paint(d2.recorded || {}, d.latest, 'Recorded in the sheet', 'ok');
+                        return { recorded: d2.recorded, date: d.latest };
                     });
                 }
-                paint(d.recorded || {}, date, 'Recorded in the sheet', 'ok');
+                return { recorded: d.recorded, date: date };
+            })
+            .then(function (got) {
+                return history.then(function () {
+                    paint(got.recorded || {}, got.date, 'Recorded in the sheet', 'ok', peak);
+                });
             })
             .catch(function (e) {
                 console.error('Home summary failed:', e);
                 if (cached) {
                     paint(cached, date, 'Could not reach the sheet — showing this ' +
-                                        'device’s last copy, which may be out of date.', 'warn');
+                                        'device’s last copy, which may be out of date.',
+                          'warn', peak);
                 } else {
                     blank('Could not reach the sheet (' + e.message + ').', 'warn');
                 }
