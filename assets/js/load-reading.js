@@ -25,6 +25,13 @@
     var THEME_KEY = 'koc-dc-theme';
     var NAME_KEY  = 'koc-dc-taken-by';
     var ENDPOINT_KEY = 'koc-dc-endpoint';
+    var LATEST_KEY = 'koc-dc-latest-date';
+    /* set once the operator picks a date themselves, so a background
+       correction never drags them off the date they chose */
+    var dateChosenByUser = false;
+    /* guards the fallback below, so an old deployment is asked once a visit
+       rather than after every status check */
+    var latestChecked = false;
 
 
 
@@ -821,6 +828,29 @@
 
         return post({ type: 'status', date: date })
             .then(function (d) {
+                /* The reply says which date the sheet most recently holds.
+                   Remembering it is what lets the next visit open on the right
+                   date without asking first. */
+                if (d.latest) {
+                    try { localStorage.setItem(LATEST_KEY, d.latest); } catch (e) { /* ignore */ }
+                    if (d.latest !== date && !dateChosenByUser) {
+                        $('fDate').value = d.latest;
+                        return loadStatusForDate();
+                    }
+                } else if (!latestChecked) {
+                    /* An older deployment does not report it. Ask separately,
+                       but in the background - this must never hold up the
+                       readings that have already arrived. */
+                    latestChecked = true;
+                    latestDate().then(function (l) {
+                        if (!l) return;
+                        try { localStorage.setItem(LATEST_KEY, l); } catch (e) { /* ignore */ }
+                        if (l !== $('fDate').value && !dateChosenByUser) {
+                            $('fDate').value = l;
+                            loadStatusForDate();
+                        }
+                    });
+                }
                 var n = 0;
                 Object.keys(d.recorded || {}).forEach(function (key) {
                     var row = byKey[key];
@@ -1092,6 +1122,7 @@
 
         /* changing the date changes what counts as already recorded */
         $('fDate').addEventListener('change', function () {
+            dateChosenByUser = true;
             setStatus('', '');
             loadStatusForDate();
         });
@@ -1126,6 +1157,7 @@
         $('todayBtn').addEventListener('click', function () {
             var t = new Date().toISOString().slice(0, 10);
             if ($('fDate').value === t) return;
+            dateChosenByUser = true;
             $('fDate').value = t;
             setStatus('', '');
             loadStatusForDate();
@@ -1236,10 +1268,16 @@
         window.addEventListener('orientationchange', function () { setTimeout(fitBar, 250); });
 
         refreshTotals();
-        latestDate().then(function (d) {
-            if (d) $('fDate').value = d;
-            loadStatusForDate();
-        });
+
+        /* Open on the date last seen on the sheet, taken from this browser
+           rather than from a round trip. Asking the server first cost an
+           entire extra request in series - four seconds before the request
+           that actually fetches anything could even start. The status reply
+           corrects it if the sheet has moved on. */
+        var remembered = null;
+        try { remembered = localStorage.getItem(LATEST_KEY); } catch (e) { /* ignore */ }
+        if (remembered) $('fDate').value = remembered;
+        loadStatusForDate();
     }
 
     if (document.readyState === 'loading') {

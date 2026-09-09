@@ -93,7 +93,23 @@ function handleStatus(payload) {
     recorded[key] = { r: hit.r, y: hit.y, b: hit.b, row: hit.row };
   }
 
-  return json({ result: 'success', date: date, recorded: recorded });
+  return json({ result: 'success', date: date, recorded: recorded,
+                latest: latestDateOnSheet_() });
+}
+
+/* The most recent date the sheet holds anything for. Reads the date column
+   alone rather than the whole width, and rides on the same memo. */
+function latestDateOnSheet_() {
+  var sheet = getSheet();
+  var last = sheet.getLastRow();
+  if (last < 2) return null;
+  var col = sheet.getRange(2, C_DATE, last - 1, 1).getValues();
+  var best = null;
+  for (var i = 0; i < col.length; i++) {
+    var d = normaliseDate(col[i][0]);
+    if (d && (best === null || d > best)) best = d;
+  }
+  return best;
 }
 
 
@@ -421,9 +437,32 @@ function rowKey(category, equipment, circuit) {
  * Sheets may store the date column as text or coerce it to a Date, depending
  * on the cell format. Reduce either to yyyy-MM-dd so the comparison holds.
  */
+/* Both of the calls this used to make per row - getSpreadsheetTimeZone and
+   formatDate - cross the Apps Script service bridge, which costs milliseconds
+   each. On a sheet of 400 rows that was over 800 bridge calls for a single
+   status check, and it was most of the ten seconds the page spent waiting.
+
+   The timezone is fetched once. The formatted date is memoised on the
+   timestamp, so a sheet holding five distinct dates formats five times
+   instead of once per row. Both caches live only for the duration of one
+   request, which is all Apps Script gives us anyway. */
+var TZ_ = null;
+var DATE_MEMO_ = {};
+
+function sheetTz_() {
+  if (TZ_ === null) TZ_ = SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone();
+  return TZ_;
+}
+
 function normaliseDate(v) {
   if (v instanceof Date) {
-    return Utilities.formatDate(v, SpreadsheetApp.getActiveSpreadsheet().getSpreadsheetTimeZone(), 'yyyy-MM-dd');
+    var t = v.getTime();
+    var hit = DATE_MEMO_[t];
+    if (hit === undefined) {
+      hit = Utilities.formatDate(v, sheetTz_(), 'yyyy-MM-dd');
+      DATE_MEMO_[t] = hit;
+    }
+    return hit;
   }
   return String(v === null || v === undefined ? '' : v).trim().slice(0, 10);
 }
