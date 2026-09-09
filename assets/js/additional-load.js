@@ -1064,6 +1064,28 @@
             });
     }
 
+
+    /* The most recent date the sheet holds anything for. Readings are not
+       taken daily, so opening on today would usually show nothing. Falls
+       back to today if the sheet cannot be asked. */
+    function latestDate() {
+        if (!endpointUrl()) return Promise.resolve(null);
+        var to = new Date();
+        var from = new Date();
+        from.setFullYear(from.getFullYear() - 6);
+        return fetch(endpointUrl(), {
+            method: 'POST',
+            body: JSON.stringify({ type: 'history',
+                                   from: from.toISOString().slice(0, 10),
+                                   to: to.toISOString().slice(0, 10) })
+        })
+            .then(function (r) { return r.ok ? r.json() : null; })
+            .then(function (d) {
+                return (d && d.result === 'success' && d.cover) ? d.cover.last : null;
+            })
+            .catch(function () { return null; });
+    }
+
     function init() {
         $('date').value = new Date().toISOString().slice(0, 10);
 
@@ -1102,7 +1124,11 @@
         try { saved = localStorage.getItem(THEME_KEY); } catch (e) { saved = null; }
         document.documentElement.setAttribute('data-theme', saved || 'dark');
 
-        load();
+        setBadge('Finding the latest reading\u2026', true);
+        latestDate().then(function (d) {
+            if (d) $('date').value = d;
+            load();
+        });
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
