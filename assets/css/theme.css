@@ -951,3 +951,16 @@ html[data-theme="light"] .banner code { background: rgba(16,24,41,.08); }
 
 /* On a desktop the page is short enough to scroll; these are for the phone. */
 @media (min-width: 900px) and (pointer: fine) { .jump { display: none; } }
+
+/* ---------- sign out ---------- */
+
+.side-signout {
+    width: 100%; display: flex; align-items: center; gap: 9px;
+    padding: 10px 12px; margin-bottom: 10px;
+    border-radius: 11px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-dim);
+    font-size: 12.6px; font-weight: 600; text-align: left;
+}
+.side-signout:hover { color: var(--text); border-color: var(--border-strong); }
+.side-signout .i { width: 15px; height: 15px; flex: 0 0 auto; }
+.side-signout em { font-style: normal; color: var(--text-faint); font-weight: 500; }

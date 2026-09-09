@@ -11,7 +11,9 @@
 <meta name="apple-mobile-web-app-title" content="Load Reading">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=f5697c2f">
+<link rel="stylesheet" href="assets/css/theme.css?v=7147cb1c">
+<script src="assets/js/auth.js?v=7147cb1c"></script>
+<script>KOCAuth.require();</script>
 </head>
 <body>
 
@@ -66,6 +68,10 @@
         </div>
 
         <div class="side-foot">
+            <button id="signOut" class="side-signout" type="button">
+                <svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                <span>Sign out <em id="whoAmI"></em></span>
+            </button>
             <div class="side-card">
                 <b id="connState">No sheet connected</b>
                 <button id="connChange" class="btn-xs" type="button" hidden>Change</button>
@@ -247,7 +253,8 @@
     </main>
 </div>
 
-<script src="assets/js/config.js?v=f5697c2f"></script>
-<script src="assets/js/load-reading.js?v=f5697c2f"></script>
+<script src="assets/js/config.js?v=7147cb1c"></script>
+<script src="assets/js/load-reading.js?v=7147cb1c"></script>
+<script src="assets/js/auth-ui.js?v=7147cb1c"></script>
 </body>
 </html>
