@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="Load Reading">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=93562d57">
+<link rel="stylesheet" href="assets/css/theme.css?v=f5697c2f">
 </head>
 <body>
 
@@ -117,7 +117,11 @@
                 <div class="grid grid-4">
                     <div>
                         <label for="fDate">Date</label>
-                        <input type="date" id="fDate" required>
+                        <div class="date-row">
+                            <input type="date" id="fDate" required>
+                            <button id="todayBtn" class="btn-sm" type="button"
+                                    title="Set the date to today">Today</button>
+                        </div>
                         <div class="field-note" id="dateStatus"></div>
                     </div>
                     <div>
@@ -212,11 +216,38 @@
 
             <div class="status" id="status"></div>
 
+            <!-- ---------- jump shortcuts ---------- -->
+            <div class="jump" id="jumpNav">
+                <button id="jumpTop" type="button" aria-label="Go to the top of the page">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M12 19V5m0 0-6 6m6-6 6 6"/></svg>
+                    <span>Top</span>
+                </button>
+                <button id="jumpLast" type="button" aria-label="Go to the last reading entered">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14m0 0-6-6m6 6 6-6"/></svg>
+                    <span>Last reading</span>
+                </button>
+            </div>
+
+            <!-- ---------- date confirmation before a bulk save ---------- -->
+            <div class="modal" id="dateConfirm" hidden>
+                <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="dcTitle">
+                    <div class="modal-title" id="dcTitle">Check the date before saving</div>
+                    <div class="modal-date" id="dcDate"></div>
+                    <div class="modal-body" id="dcBody"></div>
+                    <div class="modal-acts">
+                        <button id="dcCancel" type="button">Cancel</button>
+                        <button id="dcOk" class="btn-primary" type="button">
+                            <span>Yes, save to this date</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </main>
 </div>
 
-<script src="assets/js/config.js?v=93562d57"></script>
-<script src="assets/js/load-reading.js?v=93562d57"></script>
+<script src="assets/js/config.js?v=f5697c2f"></script>
+<script src="assets/js/load-reading.js?v=f5697c2f"></script>
 </body>
 </html>

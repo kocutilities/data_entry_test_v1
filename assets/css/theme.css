@@ -887,3 +887,67 @@ html[data-theme="light"] .banner code { background: rgba(16,24,41,.08); }
     .row.is-spare:hover { opacity: .55; }
     .row.is-spare:focus-within { opacity: 1; }
 }
+
+/* ---------- Today button beside the date ---------- */
+
+.date-row { display: flex; gap: 6px; align-items: stretch; }
+.date-row input { flex: 1 1 auto; min-width: 0; }
+.date-row .btn-sm { flex: 0 0 auto; white-space: nowrap; }
+
+/* ---------- date confirmation before a bulk save ----------
+
+   A wrong date is the one mistake on this page that cannot be seen
+   afterwards: the readings look perfectly ordinary, just filed under the
+   wrong day. So the date gets its own line, large, before anything is sent. */
+
+.modal {
+    position: fixed; inset: 0; z-index: 90;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    background: rgba(4, 7, 18, .62);
+    backdrop-filter: blur(2px);
+}
+.modal[hidden] { display: none !important; }
+.modal-card {
+    width: min(440px, 100%);
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 16px; padding: 20px 22px 18px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .45);
+}
+.modal-title { font-size: 15px; font-weight: 650; color: var(--text); }
+.modal-date {
+    font-size: 30px; font-weight: 700; letter-spacing: .01em;
+    margin: 10px 0 4px; color: var(--accent);
+    font-variant-numeric: tabular-nums;
+}
+.modal-body { font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+.modal-body .warn-line { color: var(--warn); font-weight: 600; display: block; margin-top: 8px; }
+.modal-acts { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+/* ---------- jump shortcuts ---------- */
+
+.jump {
+    position: fixed; right: 14px; z-index: 40;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    display: flex; flex-direction: column; gap: 8px;
+}
+.jump button {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 13px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border-strong);
+    color: var(--text); font-size: 12.5px; font-weight: 600;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
+}
+.jump button:hover { border-color: var(--accent); }
+.jump .i { width: 15px; height: 15px; }
+
+/* The row being returned to is worth a moment's highlight, or the jump
+   just moves the page and leaves you hunting for what changed. */
+@keyframes row-found {
+    0%   { background: var(--accent-soft); }
+    100% { background: transparent; }
+}
+.row.found { animation: row-found 1.6s ease-out; }
+
+/* On a desktop the page is short enough to scroll; these are for the phone. */
+@media (min-width: 900px) and (pointer: fine) { .jump { display: none; } }

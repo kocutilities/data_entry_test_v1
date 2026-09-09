@@ -960,6 +960,110 @@
             .catch(function () { return null; });
     }
 
+
+    /* ---------------------------------------------------------
+       date confirmation, and getting around a long page
+       --------------------------------------------------------- */
+
+    function prettyDate(iso) {
+        var p = (iso || '').split('-');
+        return p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : (iso || '(none)');
+    }
+
+    /* Resolves true only when the user confirms. Deliberately a dialog rather
+       than window.confirm: the date has to be readable at a glance, and the
+       browser's own prompt renders it in a sentence nobody stops to read. */
+    function confirmDate(count) {
+        return new Promise(function (resolve) {
+            var iso = $('fDate').value;
+            var today = new Date().toISOString().slice(0, 10);
+            /* what the sheet already holds for this date - the rows that came
+               back from it, not a separate map, since that is where the
+               status check puts them */
+            var already = 0;
+            allRows.forEach(function (r) { if (r._fromSheet) already++; });
+
+            $('dcDate').textContent = prettyDate(iso);
+
+            var body = 'About to save ' + count + ' reading' + (count === 1 ? '' : 's')
+                     + ' against this date.';
+            if (already) {
+                body += ' The sheet already holds ' + already + ' reading'
+                      + (already === 1 ? '' : 's') + ' for it.';
+            }
+            $('dcBody').textContent = body;
+
+            if (iso !== today) {
+                var w = document.createElement('span');
+                w.className = 'warn-line';
+                w.textContent = 'This is not today (' + prettyDate(today) + ').';
+                $('dcBody').appendChild(w);
+            }
+
+            var modal = $('dateConfirm');
+            modal.hidden = false;
+            $('dcOk').focus();
+
+            function close(ok) {
+                modal.hidden = true;
+                $('dcOk').removeEventListener('click', yes);
+                $('dcCancel').removeEventListener('click', no);
+                document.removeEventListener('keydown', key);
+                modal.removeEventListener('click', backdrop);
+                resolve(ok);
+            }
+            function yes() { close(true); }
+            function no() { close(false); }
+            function key(e) {
+                if (e.key === 'Escape') { e.preventDefault(); close(false); }
+                if (e.key === 'Enter') { e.preventDefault(); close(true); }
+            }
+            function backdrop(e) { if (e.target === modal) close(false); }
+
+            $('dcOk').addEventListener('click', yes);
+            $('dcCancel').addEventListener('click', no);
+            document.addEventListener('keydown', key);
+            modal.addEventListener('click', backdrop);
+        });
+    }
+
+    /* The furthest-down row that carries anything - entered, sending or
+       already recorded. That is where the work got to, so that is where
+       "Last reading" goes. Its PDU panel is opened on the way. */
+    function lastTouchedRow() {
+        var last = null;
+        allRows.forEach(function (row) {
+            if (isDone(row) || hasValues(row) || row._state === 'sending') last = row;
+        });
+        return last;
+    }
+
+    /* Instant, not smooth. This page is over 20 000 px tall, so a smooth
+       scroll across it is a long ride to nowhere, and some browsers ignore
+       the option entirely - which would leave the button doing nothing at
+       all. The highlight is what tells you where you landed. */
+    function goTop() {
+        window.scrollTo(0, 0);
+    }
+
+    function jumpTo(row) {
+        document.querySelectorAll('.row.found').forEach(function (r) {
+            r.classList.remove('found');
+        });
+        if (!row) {
+            setStatus('', 'Nothing entered yet - start at the top.');
+            goTop();
+            return;
+        }
+        var panel = row.closest('.pdu');
+        if (panel && !panel.classList.contains('open')) panel.classList.add('open');
+        row.scrollIntoView({ block: 'center' });
+        void row.offsetWidth;                 /* restart the highlight */
+        row.classList.add('found');
+        var input = row.querySelector('input[data-phase]:not([readonly])');
+        if (input) setTimeout(function () { input.focus({ preventScroll: true }); }, 120);
+    }
+
     function init() {
         var now = new Date();
         $('fDate').value = now.toISOString().slice(0, 10);
@@ -1009,8 +1113,28 @@
 
         /* everything on the page, main equipment and every PDU panel,
            whether the panel is open or not */
-        $('submitAll').addEventListener('click', function () { submitRows(pendingIn(document)); });
+        $('submitAll').addEventListener('click', function () {
+            var rows = pendingIn(document);
+            if (!rows.length) return;
+            confirmDate(rows.length).then(function (ok) {
+                if (ok) submitRows(rows);
+                else setStatus('', 'Not saved. Set the date you want, then submit again.');
+            });
+        });
         $('csvBtn').addEventListener('click', downloadCSV);
+
+        $('todayBtn').addEventListener('click', function () {
+            var t = new Date().toISOString().slice(0, 10);
+            if ($('fDate').value === t) return;
+            $('fDate').value = t;
+            setStatus('', '');
+            loadStatusForDate();
+        });
+
+        $('jumpTop').addEventListener('click', goTop);
+        $('jumpLast').addEventListener('click', function () {
+            jumpTo(lastTouchedRow());
+        });
 
         $('refreshBtn').addEventListener('click', function () {
             setStatus('', '');
