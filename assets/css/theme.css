@@ -1061,3 +1061,43 @@ a.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 @media (pointer: coarse) {
     a.brand { min-height: 44px; }
 }
+
+/* ---------- sign out on a phone ----------
+   The sidebar becomes a horizontally scrolling row below 860px and .side-foot
+   was hidden with it, which left no way to sign out on a phone at all.
+
+   It comes back as an icon pinned to the right-hand end of that row.
+   position:sticky is what does the pinning: inside a scroll container it
+   holds the button against the visible right edge while the nav slides
+   underneath, so it is reachable without scrolling to the end. The row's
+   own background sits behind it so nothing shows through. */
+
+@media (max-width: 860px) {
+    .side-foot {
+        display: flex;
+        align-items: center;
+        margin: 0 -14px 0 auto;     /* swallow the row's right padding, so */
+        padding: 0 14px 0 10px;     /* nothing scrolls through beside it   */
+        position: sticky;
+        right: -14px;
+        flex: 0 0 auto;
+        background: var(--bg-elev);
+        /* soft left edge, so the nav fades under it rather than butting up */
+        box-shadow: -12px 0 12px -6px var(--bg-elev);
+    }
+
+    /* the notes card is reference material, not a control - it stays out */
+    .side-foot .side-card { display: none; }
+
+    .side-signout {
+        width: auto;
+        margin: 0;
+        padding: 10px 12px;
+        min-width: 44px;            /* a thumb needs 44 in both directions */
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    /* icon only; the name is on the page the button leads to */
+    .side-signout span { display: none; }
+}
