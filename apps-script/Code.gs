@@ -94,22 +94,7 @@ function handleStatus(payload) {
   }
 
   return json({ result: 'success', date: date, recorded: recorded,
-                latest: latestDateOnSheet_() });
-}
-
-/* The most recent date the sheet holds anything for. Reads the date column
-   alone rather than the whole width, and rides on the same memo. */
-function latestDateOnSheet_() {
-  var sheet = getSheet();
-  var last = sheet.getLastRow();
-  if (last < 2) return null;
-  var col = sheet.getRange(2, C_DATE, last - 1, 1).getValues();
-  var best = null;
-  for (var i = 0; i < col.length; i++) {
-    var d = normaliseDate(col[i][0]);
-    if (d && (best === null || d > best)) best = d;
-  }
-  return best;
+                latest: LAST_SCAN_LATEST_ });
 }
 
 
@@ -371,10 +356,21 @@ function buildRow(stamp, meta, r) {
  * Only the columns needed for the lookup are read, so this stays cheap as the
  * sheet grows.
  */
+/* The newest date seen by the last readIndex pass. It comes free - that pass
+   already looks at every date - and saves reading the column a second time
+   just to answer "what is the most recent day on the sheet". */
+var LAST_SCAN_LATEST_ = null;
+
 function readIndex(date) {
   var sheet = getSheet();
   var last = sheet.getLastRow();
   var index = {};
+
+  /* Cleared before the early return, not after it. Leaving it set would let
+     an empty sheet report the previous call's answer - which in Apps Script
+     only bites when one instance serves two requests, but is wrong either
+     way and is exactly what the test caught. */
+  LAST_SCAN_LATEST_ = null;
 
   if (last < 2) return index;
 
@@ -384,7 +380,9 @@ function readIndex(date) {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    if (normaliseDate(row[0]) !== want) continue;
+    var d = normaliseDate(row[0]);
+    if (d && (LAST_SCAN_LATEST_ === null || d > LAST_SCAN_LATEST_)) LAST_SCAN_LATEST_ = d;
+    if (d !== want) continue;
 
     var key = rowKey(row[C_CATEGORY - C_DATE],
                      row[C_EQUIPMENT - C_DATE],
