@@ -1464,9 +1464,15 @@
 
         function showConnection() {
             var url = endpointUrl();
+            /* Disconnecting only forgets a URL this device stored. The built-in
+               one always wins, so offering to disconnect from it would be a
+               button that does nothing. */
+            var builtIn = (typeof DC_ENDPOINT === 'function' && DC_ENDPOINT.builtIn) ? DC_ENDPOINT.builtIn() : '';
             $('setupBanner').hidden = !!url;
-            $('connState').textContent = url ? 'Sheet ' + endpointLabel(url) : 'No sheet connected';
-            $('connChange').hidden = !url;
+            $('connState').textContent = url ? 'Sheet connected' : 'No sheet connected';
+            $('connState').title = url ? 'Apps Script deployment ' + endpointLabel(url) : '';
+            $('connChange').hidden = !url || url === builtIn;
+            $('connRow').classList.toggle('off', !url);
         }
 
         $('endpointSave').addEventListener('click', function () {

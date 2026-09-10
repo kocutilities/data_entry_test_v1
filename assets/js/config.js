@@ -786,6 +786,7 @@ var DC_ENDPOINT = (function () {
         try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
     };
     get.shape = SHAPE;
+    get.builtIn = builtIn;
 
     return get;
 })();

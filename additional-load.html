@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-title" content="Load Study">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=b031f2f0">
-<script src="assets/js/auth.js?v=b031f2f0"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=613528f5">
+<script src="assets/js/auth.js?v=613528f5"></script>
 <script>KOCAuth.require();</script>
 <style>
 .verdict { border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
@@ -119,7 +119,7 @@
 
 <div class="app">
     <aside class="sidebar">
-        <a class="brand" href="index.html" title="Project home">
+        <a class="brand" href="index.html" title="Home">
             <div class="brand-badge">DC</div>
             <div>
                 <div class="brand-name">KOC Data Center</div>
@@ -127,8 +127,15 @@
             </div>
         </a>
 
-        <div>
-            <div class="nav-label">Readings</div>
+        <nav class="nav nav-home">
+            <a href="index.html">
+                <svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9v12h14V9M10 21v-6h4v6"/></svg>
+                Home
+            </a>
+        </nav>
+
+        <div class="nav-group">
+            <div class="nav-label">Records</div>
             <nav class="nav">
                 <a href="load-reading.html">
                     <svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
@@ -141,7 +148,7 @@
             </nav>
         </div>
 
-        <div>
+        <div class="nav-group">
             <div class="nav-label">Analysis</div>
             <nav class="nav">
                 <a href="assessment.html">
@@ -152,31 +159,23 @@
                     <svg class="i" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM5 9h14M5 15h14M9 6h.01M9 12h.01M9 18h.01"/></svg>
                     Cabinet Load
                 </a>
-                <a href="additional-load.html" class="active">
+                <a href="additional-load.html" class="active" aria-current="page">
                     <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
                     Additional Load Study
                 </a>
             </nav>
         </div>
 
-        <div class="nav-ref">
-            <div class="nav-label">Reference</div>
-            <nav class="nav">
-                <a href="index.html">
-                    <svg class="i" viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 9h18"/></svg>
-                    Project home
-                </a>
-            </nav>
-        </div>
-
         <div class="side-foot">
-            <button id="signOut" class="side-signout" type="button">
-                <svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                <span>Sign out <em id="whoAmI"></em></span>
-            </button>
-            <div class="side-card">
-                Judged against the KOC criteria and the currents recorded for the
-                selected date. Every verdict cites its clause.
+            <div class="side-user">
+                <div class="side-avatar" id="whoInitial" aria-hidden="true">?</div>
+                <div class="side-who">
+                    <div class="side-name" id="whoAmI">Signed in</div>
+                    <div class="side-role">Signed in</div>
+                </div>
+                <button id="signOut" class="side-signout" type="button" aria-label="Sign out">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                </button>
             </div>
         </div>
     </aside>
@@ -312,10 +311,10 @@
     </main>
 </div>
 
-<script src="assets/js/config.js?v=b031f2f0"></script>
-<script src="assets/js/koc-criteria.js?v=b031f2f0"></script>
-<script src="assets/js/system-model.js?v=b031f2f0"></script>
-<script src="assets/js/additional-load.js?v=b031f2f0"></script>
-<script src="assets/js/auth-ui.js?v=b031f2f0"></script>
+<script src="assets/js/config.js?v=613528f5"></script>
+<script src="assets/js/koc-criteria.js?v=613528f5"></script>
+<script src="assets/js/system-model.js?v=613528f5"></script>
+<script src="assets/js/additional-load.js?v=613528f5"></script>
+<script src="assets/js/auth-ui.js?v=613528f5"></script>
 </body>
 </html>

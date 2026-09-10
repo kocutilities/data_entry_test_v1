@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="Cabinets">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=b031f2f0">
-<script src="assets/js/auth.js?v=b031f2f0"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=613528f5">
+<script src="assets/js/auth.js?v=613528f5"></script>
 <script>KOCAuth.require();</script>
 <style>
 /* Four states plus two for missing data. Critical needs a colour of its own
@@ -185,7 +185,7 @@ html[data-theme="light"] { --crit: #ea580c; --crit-soft: rgba(234,88,12,.12); }
 
 <div class="app">
     <aside class="sidebar">
-        <a class="brand" href="index.html" title="Project home">
+        <a class="brand" href="index.html" title="Home">
             <div class="brand-badge">DC</div>
             <div>
                 <div class="brand-name">KOC Data Center</div>
@@ -193,8 +193,15 @@ html[data-theme="light"] { --crit: #ea580c; --crit-soft: rgba(234,88,12,.12); }
             </div>
         </a>
 
-        <div>
-            <div class="nav-label">Readings</div>
+        <nav class="nav nav-home">
+            <a href="index.html">
+                <svg class="i" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5M5 9v12h14V9M10 21v-6h4v6"/></svg>
+                Home
+            </a>
+        </nav>
+
+        <div class="nav-group">
+            <div class="nav-label">Records</div>
             <nav class="nav">
                 <a href="load-reading.html">
                     <svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
@@ -207,14 +214,14 @@ html[data-theme="light"] { --crit: #ea580c; --crit-soft: rgba(234,88,12,.12); }
             </nav>
         </div>
 
-        <div>
+        <div class="nav-group">
             <div class="nav-label">Analysis</div>
             <nav class="nav">
                 <a href="assessment.html">
                     <svg class="i" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 5-7"/></svg>
                     Power System Assessment
                 </a>
-                <a href="cabinets.html" class="active">
+                <a href="cabinets.html" class="active" aria-current="page">
                     <svg class="i" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM5 9h14M5 15h14M9 6h.01M9 12h.01M9 18h.01"/></svg>
                     Cabinet Load
                 </a>
@@ -225,24 +232,16 @@ html[data-theme="light"] { --crit: #ea580c; --crit-soft: rgba(234,88,12,.12); }
             </nav>
         </div>
 
-        <div class="nav-ref">
-            <div class="nav-label">Reference</div>
-            <nav class="nav">
-                <a href="index.html">
-                    <svg class="i" viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 9h18"/></svg>
-                    Project home
-                </a>
-            </nav>
-        </div>
-
         <div class="side-foot">
-            <button id="signOut" class="side-signout" type="button">
-                <svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                <span>Sign out <em id="whoAmI"></em></span>
-            </button>
-            <div class="side-card">
-                Each cabinet is fed from two PDUs. This page asks whether either one
-                alone could carry it.
+            <div class="side-user">
+                <div class="side-avatar" id="whoInitial" aria-hidden="true">?</div>
+                <div class="side-who">
+                    <div class="side-name" id="whoAmI">Signed in</div>
+                    <div class="side-role">Signed in</div>
+                </div>
+                <button id="signOut" class="side-signout" type="button" aria-label="Sign out">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                </button>
             </div>
         </div>
     </aside>
@@ -338,10 +337,10 @@ html[data-theme="light"] { --crit: #ea580c; --crit-soft: rgba(234,88,12,.12); }
     </main>
 </div>
 
-<script src="assets/js/config.js?v=b031f2f0"></script>
-<script src="assets/js/koc-criteria.js?v=b031f2f0"></script>
-<script src="assets/js/cabinet-model.js?v=b031f2f0"></script>
-<script src="assets/js/cabinets.js?v=b031f2f0"></script>
-<script src="assets/js/auth-ui.js?v=b031f2f0"></script>
+<script src="assets/js/config.js?v=613528f5"></script>
+<script src="assets/js/koc-criteria.js?v=613528f5"></script>
+<script src="assets/js/cabinet-model.js?v=613528f5"></script>
+<script src="assets/js/cabinets.js?v=613528f5"></script>
+<script src="assets/js/auth-ui.js?v=613528f5"></script>
 </body>
 </html>

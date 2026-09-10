@@ -13,13 +13,19 @@
     var s = (typeof KOCAuth !== 'undefined') ? KOCAuth.current() : null;
     if (!s) return;
 
+    var name = s.name || s.user;
+
     var who = document.getElementById('whoAmI');
-    if (who) who.textContent = '· ' + (s.name || s.user);
+    if (who) { who.textContent = name; who.title = name; }
+
+    /* the avatar is the name's first letter */
+    var initial = document.getElementById('whoInitial');
+    if (initial) initial.textContent = String(name).trim().charAt(0).toUpperCase() || '?';
 
     var btn = document.getElementById('signOut');
     if (!btn) return;
 
-    btn.title = 'Signed in as ' + (s.name || s.user) +
+    btn.title = 'Sign out ' + name +
                 '. The session ends on its own after ' + KOCAuth.HOURS + ' hours.';
 
     btn.addEventListener('click', function () {
