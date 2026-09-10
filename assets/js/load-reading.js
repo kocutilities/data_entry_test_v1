@@ -1124,6 +1124,18 @@
                     dup++;
                 });
 
+                /* The sheet refused these and said why - an unknown way, a
+                   current it would not accept. Show the reason on the row and
+                   keep the values, so it can be corrected rather than lost. */
+                var bad = 0, firstReason = '';
+                (d.rejected || []).forEach(function (hit) {
+                    var row = byKey[hit.key];
+                    if (!row) return;
+                    setRowState(row, 'error', { message: hit.reason || 'Refused by the sheet' });
+                    if (!firstReason) firstReason = hit.reason || '';
+                    bad++;
+                });
+
                 /* anything the server did not answer for stays entered */
                 rows.forEach(function (row) {
                     if (row._state === 'sending') setRowState(row, 'pending');
@@ -1132,7 +1144,12 @@
                 saveDraft();
                 refreshTotals();
 
-                if (dup && done) {
+                if (bad) {
+                    setStatus('err', (done ? 'Recorded ' + done + '. ' : '') + bad +
+                                     (bad === 1 ? ' reading was' : ' readings were') +
+                                     ' refused by the sheet' + (firstReason ? ': ' + firstReason : '') +
+                                     '. Those rows are marked and still on this device.');
+                } else if (dup && done) {
                     setStatus('ok', 'Recorded ' + done + '. ' + dup + ' already had a reading for ' +
                                     meta.date + ' and were left unchanged.');
                 } else if (dup) {
