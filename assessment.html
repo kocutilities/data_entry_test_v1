@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="Assessment">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=a1da94ac">
-<script src="assets/js/auth.js?v=a1da94ac"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=e0a89d91">
+<script src="assets/js/auth.js?v=e0a89d91"></script>
 <script>KOCAuth.require();</script>
 <style>
 .verdict {
@@ -247,6 +247,10 @@
             </section>
             -->
 
+            <!-- "Not assessed" removed 2026-09-10. renderNotAssessed() in
+                 assessment.js is intact and no-ops while #notassessed is
+                 absent, so restoring this block is all that is needed:
+
             <section class="section">
                 <div class="section-head">
                     <h2>Not assessed</h2>
@@ -259,15 +263,16 @@
                 </p>
                 <div id="notassessed"></div>
             </section>
+            -->
 
         </div>
     </main>
 </div>
 
-<script src="assets/js/config.js?v=a1da94ac"></script>
-<script src="assets/js/koc-criteria.js?v=a1da94ac"></script>
-<script src="assets/js/system-model.js?v=a1da94ac"></script>
-<script src="assets/js/assessment.js?v=a1da94ac"></script>
-<script src="assets/js/auth-ui.js?v=a1da94ac"></script>
+<script src="assets/js/config.js?v=e0a89d91"></script>
+<script src="assets/js/koc-criteria.js?v=e0a89d91"></script>
+<script src="assets/js/system-model.js?v=e0a89d91"></script>
+<script src="assets/js/assessment.js?v=e0a89d91"></script>
+<script src="assets/js/auth-ui.js?v=e0a89d91"></script>
 </body>
 </html>

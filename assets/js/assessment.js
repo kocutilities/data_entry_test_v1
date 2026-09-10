@@ -442,8 +442,19 @@
 
         renderUnbalance();
 
-        /* what was not tested */
+        renderNotAssessed();
+    }
+
+    /* What R, Y and B currents cannot answer.
+
+       The section was taken off assessment.html on 2026-09-10. This is left
+       intact and returns early while #notassessed is absent, so restoring
+       that block in the page brings the list back with nothing else to
+       change. DC_SYSTEM.notAssessableFromCurrent is untouched. */
+    function renderNotAssessed() {
         var na = $('notassessed');
+        if (!na) return;
+
         na.innerHTML = '';
         DC_SYSTEM.notAssessableFromCurrent.forEach(function (n) {
             var row = el('div', 'narow');
