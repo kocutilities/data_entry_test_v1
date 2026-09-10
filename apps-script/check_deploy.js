@@ -3,7 +3,15 @@
 
    Is the Code.gs on this PC the one Apps Script is running?
 
+   From any folder:
+       node "D:\KOC Utility area\08-WebApp\KOC Data Center Web page\apps-script\check_deploy.js"
+
+   or, from the project folder itself:
        node apps-script/check_deploy.js
+
+   Plain "node apps-script/check_deploy.js" from anywhere else fails with
+   "Cannot find module" - node looks for the path relative to wherever the
+   terminal is. The script finds its own files wherever it is run from.
 
    Asks the live web app for its fingerprint (the plain /exec response)
    and compares it with Code.gs on disk. A match means the file here is
