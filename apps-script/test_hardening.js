@@ -366,5 +366,33 @@ section('Status and history still answer');
     check('history succeeds', h.result, 'success');
 }
 
+/* ======================================================== which Code.gs is deployed */
+section('The fingerprint identifies exactly this Code.gs');
+{
+    const { fingerprint, stampedIn } = require('./build_allowlist.js');
+    const text = fs.readFileSync(CODE, 'utf8');
+
+    check('stamped value is the hash of the file around it (else run build_allowlist.js)',
+          stampedIn(text), fingerprint(text));
+    check('it is a real stamp, not the placeholder', /^[0-9a-f]{12}$/.test(stampedIn(text)), true);
+
+    reset();
+    const g = JSON.parse(doGet()._s);
+    check('the plain /exec response reports it', g.code, CODE_FINGERPRINT);
+    check('  ... and how many feeders the server knows', g.feeders, Object.keys(ALLOWED).length);
+
+    /* Git rewrites line endings on this machine; the same file must give the
+       same fingerprint however it was saved or copied. */
+    const lf = text.replace(/\r\n?/g, '\n');
+    check('same fingerprint with LF or CRLF line endings',
+          fingerprint(lf.replace(/\n/g, '\r\n')), fingerprint(lf));
+
+    /* ...but any real edit must move it, logic as much as the equipment list. */
+    check('a one-character change to the logic changes it',
+          fingerprint(text.replace('MAX_AMPS:   5000', 'MAX_AMPS:   5001')) !== fingerprint(text), true);
+    check('a changed rack label changes it',
+          fingerprint(text.replace('"Cabin H-12"', '"Cabin H-12 SPARE"')) !== fingerprint(text), true);
+}
+
 console.log('\n%d passed, %d failed\n', pass, fail);
 process.exit(fail ? 1 : 0);

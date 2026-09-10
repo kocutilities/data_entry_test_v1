@@ -47,11 +47,14 @@
  *   false reading for a real feeder. Only a per-person token checked here
  *   would stop that. The Audit tab is what makes it detectable meanwhile.
  *
- * AFTER EDITING config.js
- *   If a feeder or PDU way was added, removed or renamed, run
+ * AFTER EDITING config.js OR THIS FILE
+ *   Run
  *       node apps-script/build_allowlist.js
- *   to regenerate ALLOWED, then paste this file and deploy a New version.
- *   Until then the server refuses that row by name - it does not guess.
+ *   It regenerates ALLOWED from config.js and restamps CODE_FINGERPRINT.
+ *   Then paste this file and deploy a New version, and confirm with
+ *       node apps-script/check_deploy.js
+ *   which compares the deployed fingerprint with this file.
+ *   A feeder or way missing from ALLOWED is refused by name - never guessed.
  *
  * AFTER ANY EDIT TO THIS FILE
  *   Deploy > Manage deployments > edit > Version: **New version** > Deploy.
@@ -76,6 +79,14 @@ var C_R = 11, C_Y = 12, C_B = 13;
 
 /** Where overwritten rows are copied before they are replaced. */
 var AUDIT_SHEET = 'Audit';
+
+/* Which Code.gs is deployed. A hash of this whole file, written in by
+   build_allowlist.js, so it changes on ANY edit - the logic as well as the
+   equipment list. Opening the /exec URL in a browser shows it, and
+   check_deploy.js compares it with the file on disk: if they match, the
+   file on disk is exactly what is running. Do not edit by hand - the tests
+   fail if it is not the hash of the file around it. */
+var CODE_FINGERPRINT = '0276aa8ec843';
 
 /* What a request may contain. Generous enough never to refuse a real round -
    a full round is about 300 rows, the largest device is a 2133 A incomer and
@@ -720,7 +731,9 @@ function doGet() {
     result: 'success',
     service: 'KOC Data Center load reading',
     sheet: SHEET_NAME,
-    rows: Math.max(0, getSheet().getLastRow() - 1)
+    rows: Math.max(0, getSheet().getLastRow() - 1),
+    code: CODE_FINGERPRINT,
+    feeders: Object.keys(ALLOWED).length
   });
 }
 
