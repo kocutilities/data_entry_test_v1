@@ -11,14 +11,22 @@ const DC_CONFIG = {
 
   /* Google Apps Script web-app URL that receives the readings.
 
-     LEAVE THIS EMPTY if the page is published anywhere public. The URL is a
-     write key - the script must accept "Anyone" - so anyone holding it can
-     append rows. The page asks for it once per device instead and keeps it in
-     that browser's storage, which keeps it out of the repository.
+     LEAVE THIS EMPTY while the site is published publicly. The URL is a
+     write key - the script must accept "Anyone" for the page to reach it at
+     all - so whoever holds it can append to, and overwrite rows in, the
+     readings sheet. This repository is public, and public repositories are
+     scraped for exactly this kind of string.
 
-     Filling it in here is only for a private copy that never leaves your
-     machine. Either way, after editing Code.gs you must redeploy as a NEW
-     VERSION, or the published app keeps serving the old code. */
+     To set a device up without typing anything, send its user a link with
+     ?sheet=<url> on the end. Opening it once stores the URL on that device
+     and takes it back out of the address bar. See the note at the end of
+     this file.
+
+     Fill this in only when the site itself is private, or when the copy
+     never leaves your machine.
+
+     Either way, after editing Code.gs you must redeploy as a NEW VERSION,
+     or the published app keeps serving the old code. */
   endpoint: '',
 
   /* Shown in the page header and written to every row. */
@@ -684,3 +692,79 @@ const DC_PDU_FEED = {
   'PDU 1': 'A', 'PDU 3': 'A', 'PDU 5': 'A', 'PDU 7': 'A',
   'PDU 6': 'B', 'PDU 2': 'B', 'PDU 4': 'B', 'PDU 8': 'B'
 };
+
+
+/* =============================================================
+   Where the sheet URL comes from
+
+   Three ways, in this order:
+
+     1. ?sheet=<url> in the address, once per device. The page stores it
+        and strips it back out of the address bar. Send that link round
+        the office and each PC is set up by opening it - no typing, and
+        the URL never enters this repository.
+
+     2. localStorage on the device, which is what (1) writes and what the
+        banner on the Load Reading page writes.
+
+     3. DC_CONFIG.endpoint above, baked into the file.
+
+   (3) is the only one that needs no action on a new device, and it is
+   also the one that publishes the URL. This site is served from a public
+   GitHub Pages repository, so anything in this file can be read by
+   anyone, and the Apps Script deployment must accept "Anyone" for the
+   page to reach it at all. That makes the URL a write key: whoever holds
+   it can append to - or overwrite rows in - the readings sheet, and
+   public repositories are scraped for exactly this kind of string.
+
+   Use (1) unless the site has been made private.
+   ============================================================= */
+
+var DC_ENDPOINT = (function () {
+    'use strict';
+
+    var KEY = 'koc-dc-endpoint';
+
+    /* An Apps Script web app URL and nothing else, so a malformed or
+       hostile ?sheet= is dropped rather than stored and posted to. */
+    var SHAPE = /^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/;
+
+    function stored() {
+        try { return localStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+    }
+
+    /* Take ?sheet= if it is there, keep it, and remove it from the address
+       so it is not bookmarked, screenshotted or forwarded by accident. */
+    (function adopt() {
+        var m = /[?&]sheet=([^&#]*)/.exec(location.search);
+        if (!m) return;
+
+        var url = '';
+        try { url = decodeURIComponent(m[1] || ''); } catch (e) { url = ''; }
+        if (SHAPE.test(url)) {
+            try { localStorage.setItem(KEY, url); } catch (e) { /* private mode */ }
+        }
+
+        var qs = location.search
+            .replace(/([?&])sheet=[^&#]*/, '$1')
+            .replace(/[?&]$/, '')
+            .replace(/\?&/, '?');
+        try {
+            history.replaceState(null, '', location.pathname + (qs === '?' ? '' : qs) + location.hash);
+        } catch (e) { /* file:// - leave the address alone */ }
+    })();
+
+    function get() {
+        return stored() || (typeof DC_CONFIG !== 'undefined' && DC_CONFIG.endpoint) || '';
+    }
+
+    get.set = function (url) {
+        try { localStorage.setItem(KEY, url); } catch (e) { /* ignore */ }
+    };
+    get.clear = function () {
+        try { localStorage.removeItem(KEY); } catch (e) { /* ignore */ }
+    };
+    get.shape = SHAPE;
+
+    return get;
+})();

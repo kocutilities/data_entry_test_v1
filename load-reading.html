@@ -11,8 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="Load Reading">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=47252a35">
-<script src="assets/js/auth.js?v=47252a35"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=1fc0df78">
+<script src="assets/js/auth.js?v=1fc0df78"></script>
 <script>KOCAuth.require();</script>
 </head>
 <body>
@@ -101,10 +101,13 @@
             <div class="banner" id="setupBanner" hidden>
                 <svg class="i" viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
                 <div style="flex:1;min-width:0">
-                    <b>No Google Sheet connected on this device.</b>
-                    Paste the Apps Script web app URL below. It is stored on this device only,
-                    never in the page, so this page can be published without exposing the way
-                    into your sheet. Until then <b>Export CSV</b> still works.
+                    <b>This device is not connected to the sheet yet.</b>
+                    Ask whoever set the app up for the <b>setup link</b> &mdash; opening it once
+                    on this PC connects it, and you will not be asked again. If you have the
+                    Apps Script web app URL itself, paste it below instead.
+                    Either way it is stored on this device only, never in the page, so the site
+                    can be public without publishing the way into your sheet.
+                    Until then <b>Export CSV</b> still works.
                     <div class="endpoint-row">
                         <input type="url" id="endpointInput" inputmode="url"
                                autocomplete="off" autocorrect="off" spellcheck="false"
@@ -269,8 +272,8 @@
     </main>
 </div>
 
-<script src="assets/js/config.js?v=47252a35"></script>
-<script src="assets/js/load-reading.js?v=47252a35"></script>
-<script src="assets/js/auth-ui.js?v=47252a35"></script>
+<script src="assets/js/config.js?v=1fc0df78"></script>
+<script src="assets/js/load-reading.js?v=1fc0df78"></script>
+<script src="assets/js/auth-ui.js?v=1fc0df78"></script>
 </body>
 </html>

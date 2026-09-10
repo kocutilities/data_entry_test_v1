@@ -116,10 +116,12 @@
        on the device rather than in the source, so this page can be published
        somewhere public without publishing the way into the sheet. Set once
        per device, per site. config.js can still carry one for a private copy. */
+    /* One resolver for the whole app - see the note at the end of config.js.
+       Five copies of this used to disagree: only the Load Reading page fell
+       back to DC_CONFIG.endpoint, so filling that in left the other four
+       still saying "no sheet connected". */
     function endpointUrl() {
-        var v = '';
-        try { v = localStorage.getItem(ENDPOINT_KEY) || ''; } catch (e) { v = ''; }
-        return v || DC_CONFIG.endpoint || '';
+        return (typeof DC_ENDPOINT === 'function') ? DC_ENDPOINT() : '';
     }
 
     function setEndpoint(url) {

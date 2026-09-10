@@ -38,8 +38,12 @@
         return n;
     }
 
+    /* One resolver for the whole app - see the note at the end of config.js.
+       Five copies of this used to disagree: only the Load Reading page fell
+       back to DC_CONFIG.endpoint, so filling that in left the other four
+       still saying "no sheet connected". */
     function endpointUrl() {
-        try { return localStorage.getItem(ENDPOINT_KEY) || ''; } catch (e) { return ''; }
+        return (typeof DC_ENDPOINT === 'function') ? DC_ENDPOINT() : '';
     }
 
     /* ---------------------------------------------------------
