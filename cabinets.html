@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Cabinet Load — KOC Data Center</title>
+<meta name="apple-mobile-web-app-title" content="Cabinets">
+<link rel="icon" href="favicon.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="assets/css/theme.css?v=b031f2f0">
+<script src="assets/js/auth.js?v=b031f2f0"></script>
+<script>KOCAuth.require();</script>
+<style>
+/* Four states plus two for missing data. Critical needs a colour of its own
+   between the theme's warn and bad, so it is defined here. */
+:root { --crit: #fb923c; --crit-soft: rgba(251,146,60,.15); --none: var(--text-faint); }
+html[data-theme="light"] { --crit: #ea580c; --crit-soft: rgba(234,88,12,.12); }
+
+.st-normal   { --c: var(--good); --cs: var(--good-soft); }
+.st-high     { --c: var(--warn); --cs: var(--warn-soft); }
+.st-critical { --c: var(--crit); --cs: var(--crit-soft); }
+.st-overload { --c: var(--bad);  --cs: var(--bad-soft); }
+.st-unread, .st-incomplete { --c: var(--none); --cs: var(--surface-3); }
+
+.spill {
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+    padding: 3px 10px; border-radius: 999px; font-size: 11.8px; font-weight: 640;
+    color: var(--c); background: var(--cs); border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+}
+.spill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--c); }
+
+/* ---------- summary ---------- */
+.tally { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 14px; }
+.tally .t {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 13px;
+    padding: 12px 14px; cursor: pointer; transition: border-color .15s, transform .12s;
+    border-top: 3px solid var(--c, var(--border-strong));
+}
+.tally .t:hover { transform: translateY(-1px); }
+.tally .t.on { box-shadow: 0 0 0 2px var(--c, var(--accent)); }
+.tally .k { font-size: 10.6px; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); }
+.tally .v { font-size: 25px; font-weight: 660; color: var(--c, var(--text)); margin-top: 2px;
+            font-variant-numeric: tabular-nums; }
+.tally .s { font-size: 11.4px; color: var(--text-faint); }
+
+.distbar { display: flex; height: 10px; border-radius: 6px; overflow: hidden; background: var(--surface-3); margin-bottom: 16px; }
+.distbar span { background: var(--c); transition: width .5s; }
+
+/* ---------- findings ---------- */
+.findings { display: grid; gap: 10px; margin-bottom: 4px; }
+.finding {
+    display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px;
+    border-radius: 12px; border: 1px solid color-mix(in srgb, var(--c) 35%, transparent);
+    background: var(--cs); font-size: 13px; line-height: 1.5;
+}
+.finding b { color: var(--c); }
+.finding .fi { width: 18px; height: 18px; flex: 0 0 18px; stroke: var(--c); margin-top: 1px; }
+
+/* ---------- whole-PDU failover ---------- */
+.pairs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.pair {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px 16px; border-left: 4px solid var(--c);
+}
+.pair h3 { margin: 0 0 2px; font-size: 14px; font-weight: 640; display: flex; align-items: center; gap: 8px; }
+.pair .who { font-size: 11.8px; color: var(--text-faint); margin-bottom: 10px; }
+.pair .line { display: flex; justify-content: space-between; gap: 8px; font-size: 12.3px; margin-top: 8px;
+              font-variant-numeric: tabular-nums; }
+.pair .line .l { color: var(--text-dim); }
+/* the figure never breaks; only the label may wrap */
+.pair .line > span:last-child { white-space: nowrap; text-align: right; }
+.meter { position: relative; height: 8px; border-radius: 5px; background: var(--surface-3); margin-top: 5px; }
+.meter i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--c); max-width: 100%; }
+.meter .tick { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-faint); opacity: .7; }
+
+/* ---------- cabinet map ---------- */
+.map { display: grid; gap: 14px; }
+.zone-block h4 { margin: 0 0 8px; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+                 color: var(--text-faint); font-weight: 640; }
+.rowline { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
+.rowline .rl { width: 22px; font-size: 12px; font-weight: 700; color: var(--text-dim); text-align: center; }
+.tile {
+    min-width: 50px; height: 40px; padding: 0 6px; border-radius: 7px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    line-height: 1.15; font-size: 11px; font-weight: 650;
+    background: var(--cs); color: var(--c); border: 1px solid color-mix(in srgb, var(--c) 40%, transparent);
+    font-variant-numeric: tabular-nums; transition: transform .1s;
+}
+.tile:hover { transform: scale(1.08); }
+.tile small { font-size: 9.6px; font-weight: 600; opacity: .85; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: var(--text-dim); margin-top: 10px; }
+
+/* ---------- filters ---------- */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.filters input[type=search] { width: 220px; }
+.filters select { width: auto; }
+.filters .count { margin-left: auto; font-size: 12.4px; color: var(--text-faint); }
+
+/* ---------- the cabinet table ---------- */
+/* The shared reading width is 1080 px. Eight columns of figures need more,
+   and the office screens are 1920 px, so this page lifts the cap. */
+.wrap { max-width: 1520px; }
+
+/* overflow-x: auto, not hidden - if a row is ever too wide it scrolls
+   rather than silently clipping the status column off the edge */
+.ctable { border: 1px solid var(--border); border-radius: 14px; overflow-x: auto; background: var(--surface); }
+.crow {
+    display: grid; align-items: center; gap: 12px; padding: 11px 14px;
+    grid-template-columns: minmax(104px, 150px) minmax(78px, 92px) minmax(0, 1.2fr) minmax(0, 1.2fr)
+                           minmax(92px, 118px) minmax(0, 1fr) minmax(0, 1fr) minmax(96px, 112px);
+    border-top: 1px solid var(--border); font-size: 12.4px;
+}
+.crow.head { border-top: 0; background: var(--surface-2); font-size: 10.6px; letter-spacing: .09em;
+             text-transform: uppercase; color: var(--text-faint); font-weight: 640; padding: 9px 14px; }
+.crow:not(.head):hover { background: var(--surface-2); }
+.crow.flash { animation: flash 1.6s ease; }
+@keyframes flash { 0%,40% { background: var(--accent-soft); } }
+
+.cname { font-weight: 650; font-size: 13.4px; }
+.cmeta { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+.flag { display: inline-block; margin-top: 4px; margin-right: 4px; padding: 1px 6px; border-radius: 5px;
+        font-size: 10.4px; font-weight: 600; background: var(--surface-3); color: var(--text-dim); }
+.flag.warn { background: var(--warn-soft); color: var(--warn); }
+
+.num { font-variant-numeric: tabular-nums; }
+.big { font-size: 14px; font-weight: 640; }
+.dim { color: var(--text-faint); }
+
+.brk + .brk { margin-top: 7px; }
+.brk .top { display: flex; justify-content: space-between; gap: 6px; font-size: 11.4px; color: var(--text-dim); }
+.brk .top b { color: var(--text); font-weight: 620; }
+.bar { position: relative; height: 7px; border-radius: 4px; background: var(--surface-3); margin: 4px 0 3px; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--c, var(--accent)); max-width: 100%; }
+.bar .cont { position: absolute; top: -2px; bottom: -2px; width: 2px; left: 80%; background: var(--text-faint); opacity: .8; }
+.brk .bot { font-size: 11px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+.split { display: flex; height: 16px; border-radius: 5px; overflow: hidden; font-size: 10px; font-weight: 700; color: #fff; }
+.split .a { background: var(--feed-a); display: grid; place-items: center; }
+.split .b { background: var(--feed-b); display: grid; place-items: center; }
+.split-cap { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+
+.fo .fl { font-size: 11px; color: var(--text-faint); }
+.fo .fv { font-size: 12.8px; font-weight: 640; color: var(--c); font-variant-numeric: tabular-nums; }
+.fo .fw { font-size: 11px; color: var(--text-faint); }
+
+.surv { font-size: 11px; margin-top: 5px; color: var(--c); font-weight: 600; }
+.missing { font-size: 11.6px; color: var(--text-faint); }
+
+.notes { font-size: 12.6px; line-height: 1.6; color: var(--text-dim); }
+.notes h3 { font-size: 13px; margin: 14px 0 4px; color: var(--text); }
+.notes ul { margin: 4px 0; padding-left: 20px; }
+.notes code { font-size: 11.6px; }
+
+@media (max-width: 1280px) {
+    .crow { gap: 9px; padding: 11px 12px; }
+}
+@media (max-width: 1100px) {
+    .tally { grid-template-columns: repeat(3, 1fr); }
+    .pairs { grid-template-columns: repeat(2, 1fr); }
+    .crow.head { display: none; }
+    .crow { grid-template-columns: 1fr 1fr; grid-template-areas:
+            "name status" "load split" "fa fb" "la lb"; gap: 10px 14px; }
+    .c-name { grid-area: name; } .c-status { grid-area: status; justify-self: end; }
+    .c-load { grid-area: load; } .c-split { grid-area: split; }
+    .c-fa { grid-area: fa; } .c-fb { grid-area: fb; }
+    .c-la { grid-area: la; } .c-lb { grid-area: lb; }
+    .crow [data-lab]::before { content: attr(data-lab); display: block; font-size: 10px;
+        letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); margin-bottom: 3px; }
+}
+@media (max-width: 620px) {
+    .tally { grid-template-columns: repeat(2, 1fr); }
+    .pairs { grid-template-columns: 1fr; }
+    .crow { grid-template-columns: 1fr; grid-template-areas:
+            "name" "status" "load" "split" "fa" "fb" "la" "lb"; }
+    .c-status { justify-self: start; }
+    .filters input[type=search] { width: 100%; }
+    .filters .count { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+    <aside class="sidebar">
+        <a class="brand" href="index.html" title="Project home">
+            <div class="brand-badge">DC</div>
+            <div>
+                <div class="brand-name">KOC Data Center</div>
+                <div class="brand-sub">Electrical records</div>
+            </div>
+        </a>
+
+        <div>
+            <div class="nav-label">Readings</div>
+            <nav class="nav">
+                <a href="load-reading.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>
+                    Load Reading
+                </a>
+                <a href="single-line.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M4 4v6h16V4M4 14v6h16v-6M12 10v4"/></svg>
+                    Single Line Diagram
+                </a>
+            </nav>
+        </div>
+
+        <div>
+            <div class="nav-label">Analysis</div>
+            <nav class="nav">
+                <a href="assessment.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 3 5-7"/></svg>
+                    Power System Assessment
+                </a>
+                <a href="cabinets.html" class="active">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM5 9h14M5 15h14M9 6h.01M9 12h.01M9 18h.01"/></svg>
+                    Cabinet Load
+                </a>
+                <a href="additional-load.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                    Additional Load Study
+                </a>
+            </nav>
+        </div>
+
+        <div class="nav-ref">
+            <div class="nav-label">Reference</div>
+            <nav class="nav">
+                <a href="index.html">
+                    <svg class="i" viewBox="0 0 24 24"><path d="M3 5h18v14H3z"/><path d="M3 9h18"/></svg>
+                    Project home
+                </a>
+            </nav>
+        </div>
+
+        <div class="side-foot">
+            <button id="signOut" class="side-signout" type="button">
+                <svg class="i" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                <span>Sign out <em id="whoAmI"></em></span>
+            </button>
+            <div class="side-card">
+                Each cabinet is fed from two PDUs. This page asks whether either one
+                alone could carry it.
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        <div class="wrap">
+
+            <div class="topbar">
+                <div><h1 class="page-title">Cabinet Load</h1></div>
+                <div class="topbar-actions">
+                    <button id="themeBtn" class="icon-btn" type="button" aria-label="Switch theme">
+                        <svg class="i ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="i ico-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+                    </button>
+                </div>
+            </div>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>Overview</h2>
+                    <span class="hint">status is the worst surviving breaker if either PDU fails</span>
+                    <span class="spacer"></span>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <label for="date" style="margin:0">Readings from</label>
+                        <select id="date" style="width:auto"></select>
+                        <button id="refresh" class="btn-sm" type="button">
+                            <svg class="i" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7M21 4v5h-5"/></svg>
+                            <span>Refresh</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="field-note" id="status"></div>
+
+                <div class="tally" id="tally"></div>
+                <div class="distbar" id="distbar"></div>
+                <div class="findings" id="findings"></div>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>If a whole PDU fails</h2>
+                    <span class="hint">its partner's incomer carries both — 160 A plate, 128 A continuous</span>
+                </div>
+                <div class="pairs" id="pairs"></div>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>Cabinet map</h2>
+                    <span class="hint">by zone and row · the figure is the worst surviving breaker, % of its continuous rating · click to find it below</span>
+                </div>
+                <div class="map" id="map"></div>
+                <div class="legend" id="legend"></div>
+            </section>
+
+            <section class="section">
+                <div class="section-head">
+                    <h2>Every cabinet</h2>
+                    <span class="hint">present loading, and what each feed would carry if the other were lost</span>
+                </div>
+                <div class="filters">
+                    <input type="search" id="q" placeholder="Find a cabinet — A-02, G-10, L-17…" aria-label="Find a cabinet">
+                    <select id="fStatus" aria-label="Status">
+                        <option value="">All statuses</option>
+                        <option value="overload">Overload</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High Load</option>
+                        <option value="normal">Normal</option>
+                        <option value="missing">Not read / incomplete</option>
+                    </select>
+                    <select id="fZone" aria-label="Zone">
+                        <option value="">All zones</option>
+                        <option value="1">Zone 1 · PDU 1 / 6</option>
+                        <option value="2">Zone 2 · PDU 3 / 2</option>
+                        <option value="3">Zone 3 · PDU 5 / 4</option>
+                        <option value="4">Zone 4 · PDU 7 / 8</option>
+                    </select>
+                    <select id="fSort" aria-label="Sort">
+                        <option value="risk">Worst first</option>
+                        <option value="name">By zone and row</option>
+                        <option value="load">Highest load</option>
+                    </select>
+                    <span class="count" id="count"></span>
+                </div>
+                <div class="ctable" id="table"></div>
+            </section>
+
+            <section class="section">
+                <div class="section-head"><h2>How it is worked out</h2></div>
+                <div class="notes" id="notes"></div>
+            </section>
+
+        </div>
+    </main>
+</div>
+
+<script src="assets/js/config.js?v=b031f2f0"></script>
+<script src="assets/js/koc-criteria.js?v=b031f2f0"></script>
+<script src="assets/js/cabinet-model.js?v=b031f2f0"></script>
+<script src="assets/js/cabinets.js?v=b031f2f0"></script>
+<script src="assets/js/auth-ui.js?v=b031f2f0"></script>
+</body>
+</html>
