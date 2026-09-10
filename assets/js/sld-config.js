@@ -191,9 +191,11 @@ const SLD = (function () {
     edge('em4', 'edb24', { side: 'emerg' });
 
     node({ id: 'k0102', kind: 'norack', x: 952, y: 860, w: 236, h: 82,
-           label: 'RACK-K01 / K02', sub: '3-phase, from EDB-24 · 31 kW',
-           note: 'Single supply and no UPS. These two racks are the exception ' +
-                 'to the dual-corded arrangement everything else uses.' });
+           label: 'RACK-K01 / K02 / L36', sub: '3-phase · 31 kW (K01+K02)',
+           note: 'Single supply and no UPS. These racks are the exception to the ' +
+                 'dual-corded arrangement everything else uses. The 31 kW is the ' +
+                 'load schedule figure for K-01 and K-02 only - the workbook covers ' +
+                 'zones 1 to 3, so L36 has no scheduled load and is not included in it.' });
     edge('edb24', 'k0102', { side: 'emerg' });
 
     /* ---------------- UPS chains ---------------- */
