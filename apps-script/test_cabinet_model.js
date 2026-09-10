@@ -22,7 +22,7 @@ const sandbox = {
     console
 };
 vm.createContext(sandbox);
-for (const f of ['config.js', 'koc-criteria.js', 'cabinet-model.js']) {
+for (const f of ['config.js', 'koc-criteria.js', 'system-model.js', 'cabinet-model.js']) {
     vm.runInContext(fs.readFileSync(path.join(JS, f), 'utf8'), sandbox, { filename: f });
 }
 const M = vm.runInContext('DC_CABINETS', sandbox);
@@ -193,6 +193,78 @@ section('A whole PDU lost - its partner incomer carries both, 160 A plate / 128 
     check('uses each PDU\'s configured rating', CFG.equipment.find(e => e.name === 'PDU 6').rated, 160);
 }
 
+/* ======================================================== a whole EMSB */
+section('Rating basis per device - each boundary, both sides');
+{
+    const J = (basis, I, plate) => M.judge(basis, I, plate).state;
+    /* breaker, 100 A plate: continuous 80 A, margin 69.6 A */
+    check('breaker 69.6 A -> Normal', J('breaker', 69.6, 100), 'normal');
+    check('breaker 69.7 A -> High Load', J('breaker', 69.7, 100), 'high');
+    check('breaker 80.1 A -> Critical', J('breaker', 80.1, 100), 'critical');
+    check('breaker 100 A -> Critical (at the plate, not over)', J('breaker', 100, 100), 'critical');
+    check('breaker 100.1 A -> Overload', J('breaker', 100.1, 100), 'overload');
+    /* UPS: the plate is continuous; 125 % for 10 min, KOC-E-011 cl. 8.7 */
+    check('UPS 87 % -> Normal', J('ups', 87, 100), 'normal');
+    check('UPS 100 % -> High Load', J('ups', 100, 100), 'high');
+    check('UPS 125 % -> Critical', J('ups', 125, 100), 'critical');
+    check('UPS 125.1 % -> Overload', J('ups', 125.1, 100), 'overload');
+    /* transformer: no permissible overload, KOC-E-005 cl. 7.2 */
+    check('transformer 100 % -> High Load', J('transformer', 2133, 2133), 'high');
+    check('transformer 100.1 % -> Overload, never Critical', J('transformer', 2135.2, 2133), 'overload');
+    /* generator: 10 % for 1 h, KOC-E-007 cl. 11.1.6 */
+    check('generator 110 % -> Critical', J('generator', 110, 100), 'critical');
+    check('generator 110.1 % -> Overload', J('generator', 110.1, 100), 'overload');
+}
+
+section('A whole EMSB lost - the other UPS chain carries the room');
+{
+    const inc = (n, r, y, b) => ({ ['Main|' + n + '|']: { r, y, b } });
+    const base = Object.assign({},
+        inc('Incomer A', 1000, 1000, 1000), inc('Incomer B', 500, 500, 500),
+        inc('ATS 002', 470, 480, 470), inc('EMSB 1', 180, 185, 185), inc('EMSB 2', 190, 190, 190),
+        inc('EMSB 4', 40, 40, 40), inc('EDB 27', 2, 2, 2), inc('Battery Charger & Fuel Pump', 0, 0, 0),
+        inc('EMSB 9', 180, 180, 180), inc('EMSB 3', 40, 40, 40),
+        inc('PDU 1', 50, 60, 40), inc('PDU 3', 50, 50, 50), inc('PDU 5', 30, 30, 30), inc('PDU 7', 45, 45, 45),
+        inc('PDU 6', 50, 60, 40), inc('PDU 2', 60, 40, 50), inc('PDU 4', 25, 25, 25), inc('PDU 8', 50, 40, 50));
+    const e = M.emsbLoss(base, [], 'EMSB 1');
+    const row = id => e.chain.find(d => d.id === id);
+    check('EMSB-1 lost -> Feed B carries, via UPS-2', [e.lostFeed, e.survFeed, e.survUps], ['A', 'B', 'UPS-2']);
+    check('path, source to rack', e.chain.map(d => d.name),
+          ['Transformer A', 'ATS-002', 'EMSB-2 \u2192 UPS-2 input', 'UPS-2', 'ESMSB-2 incomer']);
+    check('transformer A takes on what EMSB-1 drew: 1000 + 185', row('tr').peak, 1185);
+    check('ATS-002: 480 + 185 on Y', [row('ats').peak, row('ats').peakPh], [665, 'Y']);
+    check('EMSB-2 carries both UPS inputs: 190 + 185', row('emsb').peak, 375);
+    check('  ... judged on the 800 A main ACB, 640 A continuous', row('emsb').cont, 640);
+    /* R: 50+50+30+45 + 50+60+25+50 = 360; Y: 60+50+30+45 + 60+40+25+40 = 350 */
+    check('UPS output = all eight PDU incomers, phase by phase', [row('ups').after.R, row('ups').after.Y], [360, 350]);
+    check('  ... against 500 kVA = 695.6 A a phase', r1(row('ups').plate), 695.6);
+    check('ESMSB-2: 360 A of 504 A continuous', [row('esmsb').peak, row('esmsb').cont], [360, 504]);
+    check('ULDB-1 is bounded, not ignored: +63 A', row('esmsb').ifFull.peak, 423);
+    check('PDU 6 carries PDU 1 as well: 60 + 60 on Y', [e.pdus[0].name, e.pdus[0].peak], ['PDU 6 incomer', 120]);
+    check('the Feed A single-feed loads go dark with it', e.gone.some(g => g.dark && /8 loads/.test(g.name)), true);
+    check('transformer B is relieved: busiest phase R, 500 - 180', e.relief.after, 320);
+    check('generator is reported, not in the verdict', [e.gen.name.slice(0, 5), e.state], ['GEN-2', 'high']);
+
+    const e2 = M.emsbLoss(base, [], 'EMSB 2');
+    check('EMSB-2 lost -> via ATS-001, the sum of its six feeders + 190',
+          [e2.chain[1].name, e2.chain[1].after.R], ['ATS-001', 180 + 40 + 2 + 0 + 180 + 40 + 190]);
+    check('  ... and ULDB-1 goes dark, not transferred', e2.gone.some(g => g.name === 'ULDB-1'), true);
+    check('  ... and no ULDB-1 bound on ESMSB-1', e2.chain.find(d => d.id === 'esmsb').ifFull, undefined);
+
+    const gap = Object.assign({}, base); delete gap['Main|PDU 3|'];
+    const e3 = M.emsbLoss(gap, [], 'EMSB 1');
+    check('a PDU incomer unread -> UPS and ESMSB not assessed, not 0 A',
+          [e3.chain.find(d => d.id === 'ups').state, e3.chain.find(d => d.id === 'esmsb').state], ['unread', 'unread']);
+    check('  ... and the case is marked incomplete', e3.complete, false);
+
+    /* cabinets move with the feed: the Feed A lost case uses loseA for every one */
+    const c = cab([['Q7', 'R', 16]], [['Q7', 'R', 25]]);
+    const x = M.analyse(c, Object.assign(rd('PDU 1', 'Q7', { r: 7 }), rd('PDU 6', 'Q7', { r: 10 })));
+    check('cabinet: Feed B lost -> the 16 A carries 17 A and trips', M.stateOnFeedLoss(x, 'B'), 'overload');
+    check('cabinet: Feed A lost -> the 25 A carries it at 85 %', M.stateOnFeedLoss(x, 'A'), 'normal');
+    check('unread cabinet stays unread in either case', M.stateOnFeedLoss(M.analyse(c, {}), 'A'), 'unread');
+}
+
 /* ======================================================== the real readings */
 section('Against the sheet, 2026-08-16');
 (async () => {
@@ -232,6 +304,21 @@ section('Against the sheet, 2026-08-16');
             a.state.padEnd(9), a.cab.name.padEnd(12), r1(a.governing.worst.I),
             a.governing.worst.ch.way.pdu, a.governing.worst.ch.way.q, r1(a.governing.worst.pctCont),
             a.governing.worst.ch.cont));
+        const e1 = M.emsbLoss(rec, all, 'EMSB 1'), e2 = M.emsbLoss(rec, all, 'EMSB 2');
+        check('EMSB-1 lost: L-17 above rating -> Critical', e1.state, 'critical');
+        check('  ... UPS-2 at 55.1 %, ESMSB-2 at 76.1 %',
+              [r1(e1.chain[3].pct), r1(e1.chain[4].pct)], [55.1, 76.1]);
+        check('  ... PDU 6 incomer 127.6 A, High Load', [r1(e1.pdus[0].peak), e1.pdus[0].state], [127.6, 'high']);
+        check('  ... cabinets 109 / 5 / 1 / 0, 3 not read',
+              [e1.cabinets.normal, e1.cabinets.high, e1.cabinets.critical, e1.cabinets.overload, e1.cabinets.missing],
+              [109, 5, 1, 0, 3]);
+        check('EMSB-2 lost: G-10 trips -> Overload', [e2.state, e2.cabinets.worst[0].res.cab.name], ['overload', 'Cabin G-10']);
+        check('  ... transformer B 690 A, 32.3 %', [e2.chain[0].peak, r1(e2.chain[0].pct)], [690, 32.3]);
+        [e1, e2].forEach(e => {
+            console.log('  %s fails:', e.board);
+            e.chain.concat(e.pdus).forEach(d => console.log('    %s  %s  %s -> %s A  %s %',
+                d.state.padEnd(9), d.name.padEnd(24), r1(d.nowPeak), r1(d.peak), r1(d.pct)));
+        });
         console.log('  whole PDU lost:');
         M.pduPairs(rec).forEach(p => p.governing && console.log('    zone %d  lose %s -> %s carries %s A (%s)  %s % of 128 A  %s',
             p.zone, p.governing.lost, p.governing.surv, r1(p.governing.peak), p.governing.peakPh,
