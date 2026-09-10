@@ -11,23 +11,36 @@ const DC_CONFIG = {
 
   /* Google Apps Script web-app URL that receives the readings.
 
-     LEAVE THIS EMPTY while the site is published publicly. The URL is a
-     write key - the script must accept "Anyone" for the page to reach it at
-     all - so whoever holds it can append to, and overwrite rows in, the
-     readings sheet. This repository is public, and public repositories are
-     scraped for exactly this kind of string.
+     BUILT IN, so every PC in the office connects with nothing to set up.
+     Decided 2026-09-10 by Jais: the per-device setup link was tried and does
+     not fit a page used by several people on several PCs.
 
-     To set a device up without typing anything, send its user a link with
-     ?sheet=<url> on the end. Opening it once stores the URL on that device
-     and takes it back out of the address bar. See the note at the end of
-     this file.
+     What that costs, written down so it is not forgotten. The deployment
+     must accept "Anyone" for the page to reach it at all, and this
+     repository is public, so the URL is readable by anyone who looks - and
+     whoever holds it can read the readings and can append to, or overwrite
+     rows in, the sheet. It is kept below reversed and base64-encoded so the
+     repository holds no plain script.google.com/macros/s/ string for the
+     scrapers that hunt public code for one. That is a speed bump against
+     bots, NOT protection: anyone reading the page can decode it.
 
-     Fill this in only when the site itself is private, or when the copy
-     never leaves your machine.
+     If it is ever abused: in Apps Script, Deploy > Manage deployments,
+     archive this deployment and create a new one, then put the new URL here.
+     The old URL stops working the moment it is archived, and every PC picks
+     up the new one on its next load because this setting takes precedence
+     over anything a device has stored. Google Sheets keeps version history,
+     so tampered rows can be restored from File > Version history.
 
-     Either way, after editing Code.gs you must redeploy as a NEW VERSION,
-     or the published app keeps serving the old code. */
+     To encode a new URL, run in the browser console:
+         btoa('https://script.google.com/macros/s/.../exec'.split('').reverse().join(''))
+     and paste the result into endpointEncoded. Or put the plain URL in
+     endpoint and leave endpointEncoded empty - either works.
+
+     After editing Code.gs you must redeploy as a NEW VERSION (Manage
+     deployments > pencil > New version), which keeps this same URL. A NEW
+     DEPLOYMENT makes a new URL and would need this line changing. */
   endpoint: '',
+  endpointEncoded: 'Y2V4ZS9BNlV1TVV1blJrSlNoYlJZOGNnT2hkU2owY19McDQxZTFIWUh6eWVqdnZCVVFNMnNBdkhpVTgybExQcjFFR1hjUTFjeWJjeWZLQS9zL3NvcmNhbS9tb2MuZWxnb29nLnRwaXJjcy8vOnNwdHRo',
 
   /* Shown in the page header and written to every row. */
   site: 'KOC Data Center',
@@ -697,27 +710,18 @@ const DC_PDU_FEED = {
 /* =============================================================
    Where the sheet URL comes from
 
-   Three ways, in this order:
+   In this order:
 
-     1. ?sheet=<url> in the address, once per device. The page stores it
-        and strips it back out of the address bar. Send that link round
-        the office and each PC is set up by opening it - no typing, and
-        the URL never enters this repository.
+     1. The URL built into DC_CONFIG above. Every PC uses it with nothing
+        to set up. See the note on endpoint for what that costs and how to
+        replace the URL if it is ever abused.
 
-     2. localStorage on the device, which is what (1) writes and what the
-        banner on the Load Reading page writes.
+     2. localStorage on the device - written by a ?sheet=<url> link or by
+        the banner on the Load Reading page. Only consulted when nothing is
+        built in, so it can no longer pin a PC to an old URL.
 
-     3. DC_CONFIG.endpoint above, baked into the file.
-
-   (3) is the only one that needs no action on a new device, and it is
-   also the one that publishes the URL. This site is served from a public
-   GitHub Pages repository, so anything in this file can be read by
-   anyone, and the Apps Script deployment must accept "Anyone" for the
-   page to reach it at all. That makes the URL a write key: whoever holds
-   it can append to - or overwrite rows in - the readings sheet, and
-   public repositories are scraped for exactly this kind of string.
-
-   Use (1) unless the site has been made private.
+   The ?sheet= link still works and is kept for a private copy with no
+   URL built in; with one built in, it has nothing to do.
    ============================================================= */
 
 var DC_ENDPOINT = (function () {
@@ -754,8 +758,25 @@ var DC_ENDPOINT = (function () {
         } catch (e) { /* file:// - leave the address alone */ }
     })();
 
+    /* The built-in URL, decoded. Checked against the same shape as ?sheet=
+       so a mistyped or truncated value is ignored rather than posted to. */
+    function builtIn() {
+        if (typeof DC_CONFIG === 'undefined') return '';
+        var url = DC_CONFIG.endpoint || '';
+        if (!url && DC_CONFIG.endpointEncoded) {
+            try {
+                url = atob(DC_CONFIG.endpointEncoded).split('').reverse().join('');
+            } catch (e) { url = ''; }
+        }
+        return SHAPE.test(url) ? url : '';
+    }
+
+    /* Built-in first. It is the one place the office's URL is kept, so if the
+       deployment is ever replaced, editing config.js reaches every PC on its
+       next load. The other way round, any PC that had stored a URL - from a
+       setup link or the banner - would stay stuck on the dead one. */
     function get() {
-        return stored() || (typeof DC_CONFIG !== 'undefined' && DC_CONFIG.endpoint) || '';
+        return builtIn() || stored() || '';
     }
 
     get.set = function (url) {
