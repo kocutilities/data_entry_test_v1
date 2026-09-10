@@ -50,6 +50,19 @@
     var A_KEY = 'Main|Incomer A|';
     var B_KEY = 'Main|Incomer B|';
 
+    /* Which years the peak is taken from. Defaults to the previous calendar
+       year - the most recent COMPLETE one. The current year is still being
+       written, so its peak is provisional and would drift upward through the
+       year; last year's is settled and is what a capacity statement can rest
+       on. The picker overrides it. */
+    var period = { from: null, to: null };
+    var lastShown = null;      /* the reading painted, so a period change can repaint */
+
+    /* Changing both boxes starts two requests, and without this the slower
+       one paints last - so the label could read 2023-2026 over figures for
+       2023-2025. Only the most recent request is allowed to paint. */
+    var periodSeq = 0;
+
     function $(id) { return document.getElementById(id); }
 
     /* One resolver for the whole app - see the note at the end of config.js.
@@ -206,6 +219,37 @@
         }
     }
 
+    /* Everything the chosen period governs: the peak, the contingency test
+       that runs on it, the bar, and the label that says which years it came
+       from. Kept together so a period change cannot move one and leave
+       another behind. */
+    function repaintPeak(peak) {
+        var lbl = $('kpiPeakLabel');
+        if (lbl) lbl.textContent = periodLabel();
+
+        if (peak) {
+            var util = RULE.value * peak.max / TX.ratedA * 100;
+            var head = CEIL - peak.max;
+
+            setTile('kpiPeak', num(peak.max) + ' A',
+                    ymd(peak.maxDate) + ', on ' + peak.maxPhase + ' phase · ' +
+                    peak.n + ' reading' + (peak.n === 1 ? '' : 's') + ' in this period');
+
+            setTile('kpiUtil', num(util) + ' %',
+                    head >= 0
+                        ? num(head) + ' A of demand still available below the ' +
+                          num(CEIL) + ' A ceiling'
+                        : num(-head) + ' A above the ' + num(CEIL) + ' A ceiling — ' +
+                          'a deviation is required for the peak',
+                    util > 100 ? 'bad' : util > 90 ? 'warn' : 'good');
+        } else {
+            setTile('kpiPeak', '—', 'Reading the history…');
+            setTile('kpiUtil', '—', 'Needs the reading history');
+        }
+
+        paintCapacity(lastShown, peak);
+    }
+
     function paint(recorded, date, source, tone, peak) {
         var d = demandOf(recorded);
 
@@ -222,29 +266,11 @@
         /* The contingency test runs on the peak, never on the latest reading.
            Until the history is in, say so rather than showing a figure that
            would be read as the answer. */
-        if (peak) {
-            var util = RULE.value * peak.max / TX.ratedA * 100;
-            var head = CEIL - peak.max;
-
-            setTile('kpiPeak', num(peak.max) + ' A',
-                    ymd(peak.maxDate) + ', on ' + peak.maxPhase + ' phase · ' +
-                    peak.n + ' reading' + (peak.n === 1 ? '' : 's') + ' on record');
-
-            setTile('kpiUtil', num(util) + ' %',
-                    head >= 0
-                        ? num(head) + ' A of demand still available below the ' +
-                          num(CEIL) + ' A ceiling'
-                        : num(-head) + ' A above the ' + num(CEIL) + ' A ceiling — ' +
-                          'a deviation is required for the peak',
-                    util > 100 ? 'bad' : util > 90 ? 'warn' : 'good');
-        } else {
-            setTile('kpiPeak', '—', 'Reading the history…');
-            setTile('kpiUtil', '—', 'Needs the reading history');
-        }
+        lastShown = d;
+        repaintPeak(peak);
 
         phaseBars('inA', d.a, TX.ratedA);
         phaseBars('inB', d.b, TX.ratedA);
-        paintCapacity(d, peak);
 
         $('readingDate').textContent  = ymd(date);
         $('readingCount').textContent = num(Object.keys(recorded || {}).length);
@@ -265,6 +291,83 @@
     }
 
     /* ---------------------------------------------------------
+       the period picker
+       --------------------------------------------------------- */
+
+    function periodLabel() {
+        if (!period.from) return 'Peak on record';
+        return period.from === period.to
+            ? 'Peak in ' + period.from
+            : 'Peak ' + period.from + '–' + period.to;
+    }
+
+    function fillYears(years) {
+        var f = $('periodFrom'), t = $('periodTo');
+        if (!f || !t) return;
+
+        [f, t].forEach(function (sel) {
+            sel.innerHTML = '';
+            years.forEach(function (y) {
+                var o = document.createElement('option');
+                o.value = y; o.textContent = y;
+                sel.appendChild(o);
+            });
+        });
+        f.value = period.from;
+        t.value = period.to;
+    }
+
+    /* Keep the range the right way round rather than refusing it: whichever
+       box the reader just moved is the one they meant. */
+    function normalise(changed) {
+        var f = $('periodFrom'), t = $('periodTo');
+        if (Number(f.value) > Number(t.value)) {
+            if (changed === 'from') t.value = f.value; else f.value = t.value;
+        }
+        period.from = f.value;
+        period.to = t.value;
+    }
+
+    function reloadPeak() {
+        var box = $('capPeriod');
+        if (box) box.classList.add('busy');
+
+        var mine = ++periodSeq;
+        var want = { from: period.from, to: period.to };
+
+        setTile('kpiPeak', '…', 'Reading ' + period.from +
+                (period.from === period.to ? '' : '–' + period.to) + '…');
+
+        return askHistory(want.from, want.to)
+            .then(function (h) {
+                if (mine !== periodSeq) return;      /* superseded - drop it */
+                if (box) box.classList.remove('busy');
+                var pk = h && h.demand;
+                if (!pk) {
+                    /* A period with no date carrying BOTH incomers cannot give
+                       a site demand. Say which period, and do not fall back to
+                       a wider one - that would answer a question nobody asked. */
+                    setTile('kpiPeak', '—',
+                            'No date in ' + period.from +
+                            (period.from === period.to ? '' : '–' + period.to) +
+                            ' has both incomers recorded');
+                    setTile('kpiUtil', '—', 'Needs a peak to test');
+                    paintCapacity(lastShown, null);
+                    $('kpiPeakLabel').textContent = periodLabel();
+                    return;
+                }
+                repaintPeak(pk);
+            })
+            .catch(function (e) {
+                if (mine !== periodSeq) return;      /* superseded - drop it */
+                if (box) box.classList.remove('busy');
+                console.error('Period change failed:', e);
+                setTile('kpiPeak', '—', 'Could not read that period from the sheet');
+                setTile('kpiUtil', '—', 'Needs a peak to test');
+            });
+    }
+
+    /* ---------------------------------------------------------
        data
        --------------------------------------------------------- */
 
@@ -280,15 +383,13 @@
         try { return localStorage.getItem(LATEST_KEY) || ''; } catch (e) { return ''; }
     }
 
-    /* The whole reading history, for the peak. Six years back covers every
-       date the sheet holds; the server returns the statistics, not the rows. */
-    function askHistory() {
-        var to = new Date().toISOString().slice(0, 10);
-        var from = new Date();
-        from.setFullYear(from.getFullYear() - 10);
+    /* The peak over one window of years. The server returns the statistics
+       for the window, not the rows, so switching period is a fresh request -
+       there is no per-date series to recompute from on this side. */
+    function askHistory(fromYear, toYear) {
         return fetch(endpointUrl(), {
             method: 'POST', body: JSON.stringify({ type: 'history',
-                from: from.toISOString().slice(0, 10), to: to })
+                from: fromYear + '-01-01', to: toYear + '-12-31' })
         })
             .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(function (d) {
@@ -323,10 +424,15 @@
         if (cached) paint(cached, date, 'From this device · checking the sheet…', 'warn', null);
         else blank('Reading the sheet…', '');
 
-        /* Both questions at once - "what was read last" and "what is the
-           highest ever read" - rather than one after the other. */
+        /* Both questions at once - "what was read last" and "what was the
+           peak in the chosen period" - rather than one after the other. The
+           default period comes off the clock, so this need not wait to learn
+           which years the sheet holds. */
+        var thisYear = new Date().getFullYear();
+        period.from = period.to = String(thisYear - 1);
+
         var peak = null;
-        var history = askHistory()
+        var history = askHistory(period.from, period.to)
             .then(function (h) {
                 peak = h.demand;      /* null until two incomers share a date */
                 return h;
@@ -344,14 +450,35 @@
                 if (d.latest && d.latest !== date) {
                     try { localStorage.setItem(LATEST_KEY, d.latest); } catch (e) { /* ignore */ }
                     return ask(d.latest).then(function (d2) {
-                        return { recorded: d2.recorded, date: d.latest };
+                        return { recorded: d2.recorded, date: d.latest, dates: d.dates };
                     });
                 }
-                return { recorded: d.recorded, date: date };
+                return { recorded: d.recorded, date: date, dates: d.dates };
             })
             .then(function (got) {
+                /* The years the picker can offer are the years the sheet has
+                   readings for - taken from the status reply, which lists the
+                   recorded dates, so no extra request is needed. */
+                if (got.dates && got.dates.length) {
+                    var years = {};
+                    got.dates.forEach(function (dt) { years[String(dt).slice(0, 4)] = true; });
+                    var list = Object.keys(years).sort();
+
+                    /* If the previous year has nothing in it, fall back to the
+                       most recent year that does - and let the label say so
+                       rather than quietly answering for a different period. */
+                    if (list.indexOf(period.from) === -1) {
+                        period.from = period.to = list[list.length - 1];
+                        peak = null;
+                    }
+                    fillYears(list);
+                }
+
                 return history.then(function () {
                     paint(got.recorded || {}, got.date, 'Recorded in the sheet', 'ok', peak);
+                    if (peak === null && $('periodFrom') && $('periodFrom').options.length) {
+                        return reloadPeak();     /* the fallback year, fetched now */
+                    }
                 });
             })
             .catch(function (e) {
@@ -381,6 +508,15 @@
         $('sysLine').textContent = DC_SYSTEM.transformers.length + ' × ' + TX.kva +
                                    ' kVA · ' + DC_SYSTEM.generators.length +
                                    ' generators · ' + V + ' V ' + DC_SYSTEM.arrangement;
+
+        ['periodFrom', 'periodTo'].forEach(function (id) {
+            var sel = $(id);
+            if (!sel) return;
+            sel.addEventListener('change', function () {
+                normalise(id === 'periodFrom' ? 'from' : 'to');
+                reloadPeak();
+            });
+        });
 
         load();
     }

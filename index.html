@@ -6,8 +6,8 @@
 <title>KOC Data Center — Electrical Records</title>
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=1fc0df78">
-<script src="assets/js/auth.js?v=1fc0df78"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=320950aa">
+<script src="assets/js/auth.js?v=320950aa"></script>
 <script>KOCAuth.require();</script>
 <style>
     /* ---------- hero ---------- */
@@ -133,6 +133,18 @@
         margin-left: auto; font-size: 13px; color: var(--text-dim);
         font-variant-numeric: tabular-nums;
     }
+
+    /* period picker - which years the peak is taken from */
+    .cap-period {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12.4px; color: var(--text-faint);
+    }
+    .cap-period select {
+        width: auto; padding: 5px 8px; font-size: 12.6px;
+        border-radius: 8px; font-variant-numeric: tabular-nums;
+    }
+    .cap-period .dash { opacity: .7; }
+    .cap-period.busy { opacity: .55; }
 
     .cap-track {
         position: relative; height: 26px;
@@ -375,7 +387,7 @@
                     <div id="kpiDemandSub" class="kpi-sub"></div>
                 </div>
                 <div class="kpi">
-                    <div class="kpi-label">Peak on record</div>
+                    <div id="kpiPeakLabel" class="kpi-label">Peak on record</div>
                     <div id="kpiPeak" class="kpi-value">&mdash;</div>
                     <div id="kpiPeakSub" class="kpi-sub"></div>
                 </div>
@@ -398,6 +410,12 @@
             <div class="panel">
                 <div class="cap-top">
                     <h3>Demand against one transformer</h3>
+                    <div id="capPeriod" class="cap-period">
+                        <label for="periodFrom">Peak from</label>
+                        <select id="periodFrom" aria-label="Period from"></select>
+                        <span class="dash">&ndash;</span>
+                        <select id="periodTo" aria-label="Period to"></select>
+                    </div>
                     <span id="capReading" class="cap-reading"></span>
                 </div>
 
@@ -575,10 +593,10 @@
     });
 })();
 </script>
-<script src="assets/js/config.js?v=1fc0df78"></script>
-<script src="assets/js/koc-criteria.js?v=1fc0df78"></script>
-<script src="assets/js/system-model.js?v=1fc0df78"></script>
-<script src="assets/js/home.js?v=1fc0df78"></script>
-<script src="assets/js/auth-ui.js?v=1fc0df78"></script>
+<script src="assets/js/config.js?v=320950aa"></script>
+<script src="assets/js/koc-criteria.js?v=320950aa"></script>
+<script src="assets/js/system-model.js?v=320950aa"></script>
+<script src="assets/js/home.js?v=320950aa"></script>
+<script src="assets/js/auth-ui.js?v=320950aa"></script>
 </body>
 </html>
