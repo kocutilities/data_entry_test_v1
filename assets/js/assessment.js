@@ -440,30 +440,7 @@
             hr.appendChild(el('p', 'rule-detail', 'Needs both incomer readings.'));
         }
 
-        /* unbalance, advisory */
-        var ub = $('unbalance');
-        ub.innerHTML = '';
-        var list = unbalanceReview();
-        if (!list.length) {
-            ub.appendChild(el('p', 'rule-detail',
-                'Nothing to show — no feeder recorded for this date carries a mean phase '
-                + 'current of at least ' + UNBALANCE_FLOOR + ' A.'));
-        } else {
-            var note = el('p', 'rule-detail');
-            note.style.marginTop = '0';
-            note.textContent = 'Feeders carrying a mean phase current below '
-                + UNBALANCE_FLOOR + ' A are omitted — a percentage on a near-zero load is '
-                + 'arithmetic noise rather than a finding.';
-            ub.appendChild(note);
-            list.slice(0, 10).forEach(function (u) {
-                var row = el('div', 'urow');
-                row.appendChild(el('span', 'fname', u.name));
-                row.appendChild(el('span', '', u.phases.map(function (x) { return fmt(x, 1); }).join(' / ')));
-                row.appendChild(el('span', '', fmt(u.pct) + ' % spread'));
-                row.appendChild(el('span', 'fmuted', u.ns === null ? '—' : '≈' + fmt(u.ns, 1) + ' % neg seq'));
-                ub.appendChild(row);
-            });
-        }
+        renderUnbalance();
 
         /* what was not tested */
         var na = $('notassessed');
@@ -474,6 +451,43 @@
             row.appendChild(el('span', 'rule-clause', n.clause));
             row.appendChild(el('span', 'fmuted', 'needs ' + n.needs));
             na.appendChild(row);
+        });
+    }
+
+    /* Advisory unbalance table.
+
+       The section was taken off assessment.html on 2026-09-10. This and
+       unbalanceReview() are left intact and simply do not run while the
+       container is absent, so restoring that block in the page is all that
+       is needed to bring it back. */
+    function renderUnbalance() {
+        var ub = $('unbalance');
+        if (!ub) return;
+
+        ub.innerHTML = '';
+        var list = unbalanceReview();
+
+        if (!list.length) {
+            ub.appendChild(el('p', 'rule-detail',
+                'Nothing to show — no feeder recorded for this date carries a mean phase '
+                + 'current of at least ' + UNBALANCE_FLOOR + ' A.'));
+            return;
+        }
+
+        var note = el('p', 'rule-detail');
+        note.style.marginTop = '0';
+        note.textContent = 'Feeders carrying a mean phase current below '
+            + UNBALANCE_FLOOR + ' A are omitted — a percentage on a near-zero load is '
+            + 'arithmetic noise rather than a finding.';
+        ub.appendChild(note);
+
+        list.slice(0, 10).forEach(function (u) {
+            var row = el('div', 'urow');
+            row.appendChild(el('span', 'fname', u.name));
+            row.appendChild(el('span', '', u.phases.map(function (x) { return fmt(x, 1); }).join(' / ')));
+            row.appendChild(el('span', '', fmt(u.pct) + ' % spread'));
+            row.appendChild(el('span', 'fmuted', u.ns === null ? '—' : '≈' + fmt(u.ns, 1) + ' % neg seq'));
+            ub.appendChild(row);
         });
     }
 

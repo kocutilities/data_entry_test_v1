@@ -10,8 +10,8 @@
 <meta name="apple-mobile-web-app-title" content="Assessment">
 <link rel="icon" href="favicon.png" type="image/png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<link rel="stylesheet" href="assets/css/theme.css?v=320950aa">
-<script src="assets/js/auth.js?v=320950aa"></script>
+<link rel="stylesheet" href="assets/css/theme.css?v=a1da94ac">
+<script src="assets/js/auth.js?v=a1da94ac"></script>
 <script>KOCAuth.require();</script>
 <style>
 .verdict {
@@ -222,13 +222,17 @@
                 <div id="feeders"></div>
             </section>
 
+            <!-- "Phase unbalance" removed 2026-09-10. renderUnbalance() in
+                 assessment.js is intact and no-ops while #unbalance is absent,
+                 so restoring this block is all that is needed:
+
             <section class="section">
                 <div class="section-head">
                     <h2>Phase unbalance</h2>
                     <span class="hint">largest spread first</span>
                 </div>
                 <div class="advisory">
-                    <b>Advisory — not a KOC requirement.</b>
+                    <b>Advisory &mdash; not a KOC requirement.</b>
                     No KOC standard sets a phase-current unbalance limit for transformers,
                     switchboards, feeders or cables. The only continuous figure in the standards is
                     the generator's <b>8 % negative sequence</b> (KOC-E-007 Rev 1 cl. 11.1.8), which
@@ -236,11 +240,12 @@
                     indirectly: the <em>highest</em> phase is what every rating is judged against,
                     so an unbalanced board reaches its limit sooner.
                     <br><br>
-                    Negative sequence shown here is <b>estimated</b> assuming 120° displacement —
+                    Negative sequence shown here is <b>estimated</b> assuming 120&deg; displacement &mdash;
                     exact values need phase angles, which the reading sheet does not carry.
                 </div>
                 <div id="unbalance"></div>
             </section>
+            -->
 
             <section class="section">
                 <div class="section-head">
@@ -259,10 +264,10 @@
     </main>
 </div>
 
-<script src="assets/js/config.js?v=320950aa"></script>
-<script src="assets/js/koc-criteria.js?v=320950aa"></script>
-<script src="assets/js/system-model.js?v=320950aa"></script>
-<script src="assets/js/assessment.js?v=320950aa"></script>
-<script src="assets/js/auth-ui.js?v=320950aa"></script>
+<script src="assets/js/config.js?v=a1da94ac"></script>
+<script src="assets/js/koc-criteria.js?v=a1da94ac"></script>
+<script src="assets/js/system-model.js?v=a1da94ac"></script>
+<script src="assets/js/assessment.js?v=a1da94ac"></script>
+<script src="assets/js/auth-ui.js?v=a1da94ac"></script>
 </body>
 </html>
