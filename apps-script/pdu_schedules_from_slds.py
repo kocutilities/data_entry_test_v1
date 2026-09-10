@@ -1,4 +1,17 @@
 # -*- coding: utf-8 -*-
+# =========================================================================
+# SUPERSEDED 2026-09-10. This is the transcription of the 08-09-2026 PDU
+# drawings, kept as the record of how they were read. It is NOT current and
+# it does not write config.js.
+#
+# assets/js/config.js is the transcription of record. The 10-09-2026
+# revision (PDU 1 to 8 Single Line Diagram_Updated_10.09.2026) changed 12
+# ways, applied to config.js directly; they are listed way by way in the
+# vault note "Data Center 1 - PDU circuit schedules". Two entries below were
+# also misread against the 08-09 drawings - PDU 6 Q18 and Q20 lost the
+# second "SPARE" line of their labels - which the 10-09 revision happens to
+# make correct.
+# =========================================================================
 """PDU way schedules read off the individual SLDs in
    D:\\KOC Utility area\\02-Drawings\\PDU 1 to 8 Single Line Diagram
 
