@@ -265,6 +265,28 @@ section('A whole EMSB lost - the other UPS chain carries the room');
     check('unread cabinet stays unread in either case', M.stateOnFeedLoss(M.analyse(c, {}), 'A'), 'unread');
 }
 
+/* ======================================================== the diagram agrees */
+section('The single line diagram counts the same cabinets');
+{
+    vm.runInContext(fs.readFileSync(path.join(JS, 'sld-config.js'), 'utf8'), sandbox, { filename: 'sld-config.js' });
+    const S = vm.runInContext('SLD', sandbox);
+    const { cabinets } = M.build();
+    const byZone = {};
+    cabinets.forEach(c => { (byZone[c.zone] = byZone[c.zone] || []).push(c); });
+    const zones = S.nodes.filter(n => n.kind === 'zone');
+    check('four zones on the diagram', zones.length, 4);
+    zones.forEach((z, i) => {
+        const mine = byZone[i + 1];
+        const rows = [...new Set(mine.map(c => c.row))].sort().join(' / ');
+        check('zone ' + (i + 1) + ': the diagram label is the count the model gives',
+              z.sub2, mine.length + ' Live Cabinets · ' + rows);
+    });
+    check('the four zones account for every dual-fed cabinet',
+          zones.reduce((s, z) => s + parseInt(z.sub2, 10), 0), cabinets.length);
+    check('single-fed loads are not counted as cabinets anywhere',
+          M.build().singleFed.every(c => /socket|corridor|RMS|LAN/i.test(c.name)), true);
+}
+
 /* ======================================================== the real readings */
 section('Against the sheet, 2026-08-16');
 (async () => {

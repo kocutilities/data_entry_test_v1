@@ -250,21 +250,52 @@ const SLD = (function () {
        the riser closest to the stack, Zone 4 the lowest and outermost. Every
        run is 90 degrees and none of the eight crosses another. */
 
+    /* Live cabinets in a zone, and the rows they sit in - counted from the
+       PDU circuit schedules rather than typed in, so this diagram cannot
+       drift from the Cabinet Load page when a way changes. A live cabinet is
+       one with a non-spare way on BOTH feeds; the building sockets and the
+       RMS hang off PDU-1 alone and are not cabinets.
+
+       These are not the load workbook's figures (27 / 39 / 14 / 33). That
+       workbook counts scheduled racks across zones 1 to 3 only and does not
+       put the H row in zone 3, where the PDU-5 / PDU-4 schedules place
+       H-01 to H-12. The drawings are the record of what is fed from where,
+       so they govern here. */
+    function liveCabinets(pduA, pduB) {
+        var feeds = {};
+        [pduA, pduB].forEach(function (pdu, i) {
+            (DC_CONFIG.pduCircuits[pdu] || []).forEach(function (c) {
+                if (/SPARE/i.test(c.rack || '')) return;
+                (feeds[c.rack] = feeds[c.rack] || {})[i ? 'B' : 'A'] = true;
+            });
+        });
+        var n = 0, rows = {};
+        Object.keys(feeds).forEach(function (name) {
+            if (!feeds[name].A || !feeds[name].B) return;
+            n++;
+            var m = String(name).replace(/^cabin\s*/i, '').match(/[A-Za-z]/);
+            if (m) rows[m[0].toUpperCase()] = true;
+        });
+        return n + ' Live Cabinets · ' + Object.keys(rows).sort().join(' / ');
+    }
+
     var ZL = 1248, ZR = 1452, PBOT = 1140;
     var ZONES = [
-        ['ZONE 1', 'PDU-1 + PDU-6', '27 racks · A / B / K', 750, 'pa3', 'pb0', 1164, 1164, 1536],
-        ['ZONE 2', 'PDU-3 + PDU-2', '39 racks · B / C / D / E', 860, 'pa2', 'pb1', 1188, 1188, 1512],
-        ['ZONE 3', 'PDU-5 + PDU-4', '14 racks · F / G', 970, 'pa1', 'pb2', 1212, 1212, 1488],
-        ['ZONE 4', 'PDU-7 + PDU-8', '33 racks · M / L', 1080, 'pa0', 'pb3', 1236, 1236, 1464]
+        ['ZONE 1', 'PDU-1 + PDU-6', liveCabinets('PDU 1', 'PDU 6'), 750, 'pa3', 'pb0', 1164, 1164, 1536],
+        ['ZONE 2', 'PDU-3 + PDU-2', liveCabinets('PDU 3', 'PDU 2'), 860, 'pa2', 'pb1', 1188, 1188, 1512],
+        ['ZONE 3', 'PDU-5 + PDU-4', liveCabinets('PDU 5', 'PDU 4'), 970, 'pa1', 'pb2', 1212, 1212, 1488],
+        ['ZONE 4', 'PDU-7 + PDU-8', liveCabinets('PDU 7', 'PDU 8'), 1080, 'pa0', 'pb3', 1236, 1236, 1464]
     ];
     ZONES.forEach(function (z, i) {
         var y = z[3], chan = z[6], vxL = z[7], vxR = z[8];
         node({ id: 'z' + i, kind: 'zone', x: 1350, y: y, w: 204, h: 82,
                label: z[0], sub: z[1], sub2: z[2],
-               note: 'Every rack takes one cord from ' + z[1].split(' + ')[0] +
+               note: 'Every cabinet takes one cord from ' + z[1].split(' + ')[0] +
                      ' and one from ' + z[1].split(' + ')[1] + ', on the two ' +
                      'different UPS systems, so losing either side leaves the ' +
-                     'servers running.' });
+                     'servers running. Live cabinets are those with a way on ' +
+                     'both feeds, counted from the PDU circuit schedules; ' +
+                     'spare ways are not counted.' });
 
         var a = nodes.filter(function (n) { return n.id === z[4]; })[0];
         var b = nodes.filter(function (n) { return n.id === z[5]; })[0];
