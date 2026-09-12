@@ -86,7 +86,7 @@ var AUDIT_SHEET = 'Audit';
    check_deploy.js compares it with the file on disk: if they match, the
    file on disk is exactly what is running. Do not edit by hand - the tests
    fail if it is not the hash of the file around it. */
-var CODE_FINGERPRINT = '0276aa8ec843';
+var CODE_FINGERPRINT = '272b69d54a17';
 
 /* What a request may contain. Generous enough never to refuse a real round -
    a full round is about 300 rows, the largest device is a 2133 A incomer and
@@ -133,7 +133,7 @@ var ALLOWED = {
   "Main|Generator Control Panel|": ["",125],
   "Main|EMSB 2|": ["",1000],
   "Main|EMCC 1|": ["",800],
-  "PDU|PDU 1|Q1": ["Cabin A-01",20],
+  "PDU|PDU 1|Q1": ["SPARE Cabin A-01",20],
   "PDU|PDU 1|Q2": ["Cabin A-02",20],
   "PDU|PDU 1|Q3": ["Cabin A-03",20],
   "PDU|PDU 1|Q4": ["Cabin A-04",20],
@@ -415,7 +415,7 @@ var ALLOWED = {
   "PDU|PDU 7|Q46": ["SPARE",32],
   "PDU|PDU 7|Q47": ["SPARE",32],
   "PDU|PDU 7|Q48": ["SPARE",32],
-  "PDU|PDU 6|Q1": ["Cabin A-01",25],
+  "PDU|PDU 6|Q1": ["SPARE Cabin A-01",25],
   "PDU|PDU 6|Q2": ["Cabin A-02",25],
   "PDU|PDU 6|Q3": ["Cabin A-03",25],
   "PDU|PDU 6|Q4": ["Cabin A-04",25],

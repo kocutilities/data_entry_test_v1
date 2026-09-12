@@ -118,7 +118,7 @@ const DC_CONFIG = {
      --------------------------------------------------------------- */
   pduCircuits: {
     'PDU 1': [
-        { c: 'Q1', rack: 'Cabin A-01', breaker: '20A', ph: '3' },
+        { c: 'Q1', rack: 'SPARE Cabin A-01', breaker: '20A', ph: '3' },
         { c: 'Q2', rack: 'Cabin A-02', breaker: '20A', ph: '3' },
         { c: 'Q3', rack: 'Cabin A-03', breaker: '20A', ph: '3' },
         { c: 'Q4', rack: 'Cabin A-04', breaker: '20A', ph: '3' },
@@ -408,7 +408,7 @@ const DC_CONFIG = {
         { c: 'Q48', rack: 'SPARE', breaker: '32A', ph: '3' }
     ],
     'PDU 6': [
-        { c: 'Q1', rack: 'Cabin A-01', breaker: '25A', ph: '3' },
+        { c: 'Q1', rack: 'SPARE Cabin A-01', breaker: '25A', ph: '3' },
         { c: 'Q2', rack: 'Cabin A-02', breaker: '25A', ph: '3' },
         { c: 'Q3', rack: 'Cabin A-03', breaker: '25A', ph: '3' },
         { c: 'Q4', rack: 'Cabin A-04', breaker: '25A', ph: '3' },

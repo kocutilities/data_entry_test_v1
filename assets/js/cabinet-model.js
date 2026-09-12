@@ -30,7 +30,7 @@
    (the layout marks each rack "P1 Q74 / P6 Q74"), and the same number
    is on the same phase on both. So for a cabinet whose two sides match,
    the surviving breaker carries exactly its own current plus its
-   partner's. 115 of the 118 cabinets match.
+   partner's. 114 of the 117 cabinets match.
 
    Three do not - A-14, G-01 and G-02 have different ways, and phases,
    on each side. There, matching ways are paired as above and the
@@ -103,7 +103,7 @@ var DC_CABINETS = (function () {
             c.matched = sig(c.A) === sig(c.B);
 
             /* Paired ways with different breakers. The smaller one is what
-               limits redundancy: after a failure it carries everything. 58
+               limits redundancy: after a failure it carries everything. 57
                paired ways differ across zones 1-3 on the 10-09 drawings. */
             c.mismatch = [];
             c.A.forEach(function (a) {

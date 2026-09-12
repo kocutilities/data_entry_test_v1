@@ -53,10 +53,10 @@ const rd = (pdu, q, v) => ({ ['PDU|' + pdu + '|' + q]: v });
 section('Cabinets built from config');
 {
     const { cabinets, singleFed } = M.build();
-    check('118 dual-fed cabinets', cabinets.length, 118);
+    check('117 dual-fed cabinets', cabinets.length, 117);
     check('8 single-fed loads kept apart', singleFed.length, 8);
     check('no single-fed load is a cabinet', singleFed.filter(s => /cabin|^L-|^M-/i.test(s.name)).map(s => s.name), []);
-    check('115 pair exactly', cabinets.filter(c => c.matched).length, 115);
+    check('114 pair exactly', cabinets.filter(c => c.matched).length, 114);
     check('the three that do not', cabinets.filter(c => !c.matched).map(c => c.name).sort(),
           ['Cabin A-14', 'Cabin G-01', 'Cabin G-02']);
     /* the pairing key is way|phase; that only works if each side sits on one PDU */
@@ -66,8 +66,8 @@ section('Cabinets built from config');
     check('every A side is on an odd PDU, every B side on an even one',
           cabinets.filter(c => c.A.some(w => +w.pdu.slice(4) % 2 === 0) || c.B.some(w => +w.pdu.slice(4) % 2 === 1))
                   .map(c => c.name), []);
-    check('58 paired ways carry different breakers on each side',
-          cabinets.reduce((s, c) => s + c.mismatch.length, 0), 58);
+    check('57 paired ways carry different breakers on each side',
+          cabinets.reduce((s, c) => s + c.mismatch.length, 0), 57);
     check('G-10 is one: 16 A on PDU 5, 25 A on PDU 4',
           cabinets.find(c => c.name === 'Cabin G-10').mismatch, [{ q: 'Q24', plateA: 16, plateB: 25 }]);
     check('Cabin A-02 is PDU 1 Q2 and PDU 6 Q2, the example given',
@@ -304,8 +304,8 @@ section('Against the sheet, 2026-08-16');
         all.forEach(a => { tally[a.state] = (tally[a.state] || 0) + 1; });
         console.log('  status tally:', JSON.stringify(tally));
         check('every cabinet gets exactly one state', all.every(a => a.state), true);
-        check('the unread are A-01 and H-04, missed on both feeds',
-              all.filter(a => a.state === 'unread').map(a => a.cab.name).sort(), ['Cabin A-01', 'Cabin H-04']);
+        check('the unread is H-04, missed on both feeds',
+              all.filter(a => a.state === 'unread').map(a => a.cab.name).sort(), ['Cabin H-04']);
         check('the incomplete is D-03, missed on one feed',
               all.filter(a => a.state === 'incomplete').map(a => a.cab.name), ['Cabin D-03']);
 
@@ -331,9 +331,9 @@ section('Against the sheet, 2026-08-16');
         check('  ... UPS-2 at 55.1 %, ESMSB-2 at 76.1 %',
               [r1(e1.chain[3].pct), r1(e1.chain[4].pct)], [55.1, 76.1]);
         check('  ... PDU 6 incomer 127.6 A, High Load', [r1(e1.pdus[0].peak), e1.pdus[0].state], [127.6, 'high']);
-        check('  ... cabinets 109 / 5 / 1 / 0, 3 not read',
+        check('  ... cabinets 109 / 5 / 1 / 0, 2 not read',
               [e1.cabinets.normal, e1.cabinets.high, e1.cabinets.critical, e1.cabinets.overload, e1.cabinets.missing],
-              [109, 5, 1, 0, 3]);
+              [109, 5, 1, 0, 2]);
         check('EMSB-2 lost: G-10 trips -> Overload', [e2.state, e2.cabinets.worst[0].res.cab.name], ['overload', 'Cabin G-10']);
         check('  ... transformer B 690 A, 32.3 %', [e2.chain[0].peak, r1(e2.chain[0].pct)], [690, 32.3]);
         [e1, e2].forEach(e => {
